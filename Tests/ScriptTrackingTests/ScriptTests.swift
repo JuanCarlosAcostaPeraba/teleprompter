@@ -43,4 +43,13 @@ final class ScriptTests: XCTestCase {
         let script = Script("El texto espera y continúa cuando vuelvo a hablar")
         XCTAssertLessThan(script.nextPosition(after: 6, transcript: "continúa cuando vuelvo a", previous: ""), 9)
     }
+
+    func testSpanishEndingCanRecoverAfterRecognitionResets() {
+        let script = Script("Buenos días. Hoy vamos a comprobar que el lector sigue cada palabra. Cuando hago una pausa, el texto espera y continúa cuando vuelvo a hablar.")
+        XCTAssertEqual(script.nextPosition(after: 21, transcript: "a hablar", previous: ""), 25)
+        XCTAssertEqual(script.nextPosition(after: 21, transcript: "a hablar", previous: "a hablar"), 21)
+
+        let repeated = Script("Vamos a hablar. Pero después vuelvo a hablar.")
+        XCTAssertEqual(repeated.nextPosition(after: 4, transcript: "a hablar", previous: ""), 4)
+    }
 }

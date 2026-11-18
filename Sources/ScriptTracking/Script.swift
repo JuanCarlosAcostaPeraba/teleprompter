@@ -66,6 +66,15 @@ public struct Script {
         let exactPosition = local.map { $0.end + 1 } ?? cursor
         guard exactPosition < words.count else { return exactPosition }
 
+        // A recognizer may resume after a pause with just the last two
+        // words. Require a fresh, unique ending within two skipped words.
+        if (3...4).contains(words.count - cursor), heard.count >= 2,
+           heard.suffix(2).elementsEqual(words.suffix(2)),
+           !heard.suffix(2).elementsEqual(old.suffix(2)),
+           endings.filter({ $0 > 0 && words[$0 - 1] == heard[heard.count - 2] }).count == 1 {
+            return words.count
+        }
+
         // Allow one dictation error close to the current position. An exact
         // final word and two additional matches are required to move forward.
         let candidates = endings.filter { end in
