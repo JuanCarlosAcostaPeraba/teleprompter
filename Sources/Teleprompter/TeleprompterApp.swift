@@ -9,6 +9,8 @@ final class Prompter: ObservableObject {
     @Published private(set) var listening = false
     @Published private(set) var starting = false
     @Published private(set) var error: String?
+    @Published var showTranscript = false
+    @Published private(set) var transcript = ""
     @Published var fontSize = 32.0
     @Published var opacity = 0.96
     private let speech = SpeechInput()
@@ -55,16 +57,21 @@ final class Prompter: ObservableObject {
         }
         error = nil
         starting = true
+        transcript = ""
         previous = ""
         Task { [weak self] in
             guard let self, starting else { return }
-            await speech.start(locale: locale) { [weak self] text, reset in
+            await speech.start(locale: locale, context: { [weak self] in
+                guard let self else { return [] }
+                return script.recognitionContext(near: cursor)
+            }) { [weak self] text, reset in
                 guard let self else { return }
                 if reset {
                     previous = ""
                     starting = false
                     listening = true
                 } else {
+                    if showTranscript { transcript = text }
                     cursor = script.nextPosition(after: cursor, transcript: text, previous: previous)
                     previous = text
                 }
@@ -199,6 +206,7 @@ struct Reader: View {
                     .labelStyle(.iconOnly)
                 Spacer()
                 Menu("Vista", systemImage: "textformat.size") {
+                    Toggle("Mostrar transcripción", isOn: $model.showTranscript)
                     Button("Aumentar texto") { model.fontSize = min(72, model.fontSize + 4) }
                     Button("Reducir texto") { model.fontSize = max(18, model.fontSize - 4) }
                     Button("Aumentar opacidad") { model.opacity = min(1, model.opacity + 0.1) }
@@ -237,6 +245,10 @@ struct Reader: View {
                     model.seek(position)
                     return .handled
                 })
+            }
+            if model.showTranscript && !model.transcript.isEmpty {
+                Text(model.transcript).font(.caption).lineLimit(2).truncationMode(.head)
+                    .foregroundStyle(.secondary).padding(.horizontal, 14)
             }
             HStack {
                 Text(model.starting ? "Activando micrófono…" : model.listening ? "Siguiendo tu voz" : "Modo manual")

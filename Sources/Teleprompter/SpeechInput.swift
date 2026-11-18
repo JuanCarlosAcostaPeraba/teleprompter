@@ -12,6 +12,7 @@ final class SpeechInput {
 
     func start(
         locale: String,
+        context: @escaping () -> [String],
         onText: @escaping (String, Bool) -> Void,
         onError: @escaping (String) -> Void
     ) async {
@@ -36,11 +37,12 @@ final class SpeechInput {
             onError("El reconocimiento local no está disponible para este idioma. Puedes seguir en modo manual.")
             return
         }
-        listen(recognizer, onText: onText, onError: onError)
+        listen(recognizer, context: context, onText: onText, onError: onError)
     }
 
     private func listen(
         _ recognizer: SFSpeechRecognizer,
+        context: @escaping () -> [String],
         onText: @escaping (String, Bool) -> Void,
         onError: @escaping (String) -> Void
     ) {
@@ -50,6 +52,7 @@ final class SpeechInput {
         request.requiresOnDeviceRecognition = true
         request.shouldReportPartialResults = true
         request.taskHint = .dictation
+        request.contextualStrings = context()
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else {
@@ -78,7 +81,7 @@ final class SpeechInput {
                 guard let self, self.generation == current else { return }
                 if let transcript { onText(transcript, false) }
                 if isFinal || (failure?.domain == "kAFAssistantErrorDomain" && failure?.code == 1110) {
-                    self.listen(recognizer, onText: onText, onError: onError)
+                    self.listen(recognizer, context: context, onText: onText, onError: onError)
                 } else if let failure {
                     self.stop()
                     onError("Se interrumpió el reconocimiento. \(failure.localizedDescription)")
@@ -88,7 +91,7 @@ final class SpeechInput {
         renewal = Task { [weak self] in
             try? await Task.sleep(for: .seconds(50))
             guard !Task.isCancelled, let self, self.generation == current else { return }
-            self.listen(recognizer, onText: onText, onError: onError)
+            self.listen(recognizer, context: context, onText: onText, onError: onError)
         }
     }
 

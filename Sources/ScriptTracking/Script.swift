@@ -26,6 +26,17 @@ public struct Script {
         self.positions = Dictionary(grouping: words.indices, by: { words[$0] })
     }
 
+    public func recognitionContext(near cursor: Int) -> [String] {
+        let visibleWords = tokens.compactMap { token -> String? in
+            guard let index = token.wordIndex, index >= cursor, index < cursor + 60 else { return nil }
+            return token.text
+        }
+        return stride(from: 0, to: visibleWords.count, by: 4).compactMap { start in
+            let phrase = visibleWords[start..<min(start + 6, visibleWords.count)]
+            return phrase.count >= 2 ? phrase.joined(separator: " ") : nil
+        }
+    }
+
     private static func normalize(_ word: String) -> String {
         word.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
             .replacingOccurrences(of: "’", with: "'")
