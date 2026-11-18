@@ -4,6 +4,7 @@ import SwiftUI
 @MainActor
 enum CameraPlacement {
     static let defaultReaderWidth = 435.0
+    static let defaultReaderHeight = 216.0
     static let readerWidthRange = 400.0...1200.0
     static let previewHeight = 204.0
 

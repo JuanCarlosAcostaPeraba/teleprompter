@@ -52,12 +52,11 @@ final class Prompter: ObservableObject {
 
     func restoreReaderLayout() {
         readerWidth = CameraPlacement.defaultReaderWidth
-        guard let panel, let screen = CameraPlacement.screen else {
+        guard let panel else {
             NSWindow.removeFrame(usingName: Self.readerFrameName)
             return
         }
-        panel.setFrameTopLeftPoint(CameraPlacement.position(size: panel.frame.size, on: screen))
-        panel.saveFrame(usingName: Self.readerFrameName)
+        panel.centerUnderCamera()
     }
 
     func rememberReaderWidth(_ window: NSWindow) {
@@ -109,7 +108,7 @@ final class Prompter: ObservableObject {
     }
     private static let readerFrameName = "Teleprompter Reader Layout"
     private let speech = SpeechInput()
-    private var panel: NSPanel?
+    private var panel: ReaderPanel?
     private var previous = ""
 
     func closeReader() {
@@ -127,7 +126,7 @@ final class Prompter: ObservableObject {
         error = nil
         if panel == nil {
             let panel = ReaderPanel(
-                contentRect: NSRect(x: 0, y: 0, width: readerWidth, height: 320),
+                contentRect: NSRect(x: 0, y: 0, width: readerWidth, height: CameraPlacement.defaultReaderHeight),
                 styleMask: [.borderless, .resizable],
                 backing: .buffered, defer: false
             )
@@ -144,10 +143,20 @@ final class Prompter: ObservableObject {
             panel.level = .floating
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.contentView = NSHostingView(rootView: Reader(model: self))
-            if !panel.setFrameUsingName(Self.readerFrameName), let screen = CameraPlacement.screen {
-                panel.setFrameTopLeftPoint(CameraPlacement.position(size: panel.frame.size, on: screen))
-            }
+            let restored = panel.setFrameUsingName(Self.readerFrameName)
             panel.setFrameAutosaveName(Self.readerFrameName)
+            let defaults = UserDefaults.standard
+            if !defaults.bool(forKey: "compactReaderHeightInitialized") {
+                if restored, abs(panel.frame.height - 320) < 0.5 {
+                    var frame = panel.frame
+                    frame.origin.y += frame.height - CameraPlacement.defaultReaderHeight
+                    frame.size.height = CameraPlacement.defaultReaderHeight
+                    panel.setFrame(frame, display: false)
+                    panel.saveFrame(usingName: Self.readerFrameName)
+                }
+                defaults.set(true, forKey: "compactReaderHeightInitialized")
+            }
+            if !restored { panel.centerUnderCamera() }
             if abs(panel.frame.width - readerWidth) > 0.5 {
                 var frame = panel.frame
                 frame.origin.x += (frame.width - readerWidth) / 2
@@ -270,12 +279,23 @@ private final class ReaderPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     private var dragOffset: NSPoint?
 
+    func centerUnderCamera() {
+        guard let screen = CameraPlacement.screen else { return }
+        setFrameTopLeftPoint(CameraPlacement.position(size: frame.size, on: screen))
+        if !frameAutosaveName.isEmpty { saveFrame(usingName: frameAutosaveName) }
+    }
+
     override func sendEvent(_ event: NSEvent) {
         let point = event.locationInWindow
         switch event.type {
         case .leftMouseDown:
             if (8...40).contains(frame.height - point.y), point.x > 10, point.x < frame.width - 46 {
-                dragOffset = point
+                if event.clickCount == 2 {
+                    dragOffset = nil
+                    centerUnderCamera()
+                } else {
+                    dragOffset = point
+                }
                 return
             }
         case .leftMouseDragged:
@@ -309,7 +329,7 @@ struct Reader: View {
                     .foregroundStyle(highlight)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
-                    .help("Arrastra para mover el lector")
+                    .help("Arrastra para mover el lector. Doble clic para centrarlo bajo la cámara.")
                 Text(model.microphoneName ?? "Entrada de audio")
                     .font(.caption).foregroundStyle(.secondary)
                     .lineLimit(1).truncationMode(.tail)

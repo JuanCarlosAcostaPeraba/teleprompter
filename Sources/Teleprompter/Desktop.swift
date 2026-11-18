@@ -163,7 +163,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
 
     private func placeEditor(_ editor: NSWindow, on screen: NSScreen) {
         let bounds = screen.visibleFrame.insetBy(dx: 12, dy: 10)
-        let size = NSSize(width: model.readerWidth, height: 320)
+        let size = NSSize(width: model.readerWidth, height: CameraPlacement.defaultReaderHeight)
         let topLeft = CameraPlacement.position(size: size, on: screen)
         let defaultReader = NSRect(x: topLeft.x, y: topLeft.y - size.height, width: size.width, height: size.height)
         let reader = model.visibleReaderFrame.flatMap { $0.intersects(bounds) ? $0 : nil } ?? defaultReader
