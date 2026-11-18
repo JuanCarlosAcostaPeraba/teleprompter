@@ -37,6 +37,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
     }
 
     let model = Prompter()
+    let updater = AppUpdater()
     private var statusItem: NSStatusItem?
     private let popover = NSPopover()
     private var editor: NSWindow?
@@ -75,7 +76,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
             return
         }
         if settings == nil {
-            settings = makeWindow(title: "Ajustes de Teleprompter", size: NSSize(width: 430, height: 548),
+            settings = makeWindow(title: "Ajustes de Teleprompter", size: NSSize(width: 430, height: 628),
                                   content: Preferences(desktop: self, model: model))
             settings?.delegate = self
         }

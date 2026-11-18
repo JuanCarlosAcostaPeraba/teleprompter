@@ -59,18 +59,26 @@ struct AudioNoticeSurface: ViewModifier {
     }
 }
 
-struct ListenButtonAppearance: ViewModifier {
-    let useLiquidGlass: Bool
-    let highlight: Color
-    let ink: Color
+struct GlassControls: ViewModifier {
+    let enabled: Bool
 
     func body(content: Content) -> some View {
-        if #available(macOS 26, *), useLiquidGlass {
-            content.buttonStyle(.glass).foregroundStyle(highlight)
+        if #available(macOS 26, *), enabled {
+            content.buttonStyle(.glass)
+        } else {
+            content
+        }
+    }
+}
+
+struct PrimaryGlassButton: ViewModifier {
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *), enabled {
+            content.buttonStyle(.glassProminent)
         } else {
             content.buttonStyle(.borderedProminent)
-                .tint(highlight.opacity(0.75))
-                .foregroundStyle(ink)
         }
     }
 }

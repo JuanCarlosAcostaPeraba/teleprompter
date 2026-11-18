@@ -1,35 +1,52 @@
 # Teleprompter
 
-Teleprompter nativo para macOS 14 o posterior. Guarda el guion en este Mac y sigue lo que lees con el reconocimiento de voz local de Apple. Puedes elegir entre los idiomas y las variantes que macOS ofrece para el reconocimiento de voz.
+A native macOS teleprompter that follows your voice. The floating reader stays near the camera and keeps the active line at a fixed height as you speak.
 
-## Abrir la aplicación
+[Español](README.es.md)
 
-Descarga `Teleprompter-macOS.zip` en [Releases](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest), descomprímelo y abre **Teleprompter.app**. La descarga es para Apple Silicon e Intel y usa firma ad hoc.
+## Download and install
 
-Para compilar desde el código, ejecuta `./scripts/build-app.sh` con Swift 6 o posterior y abre `dist/Teleprompter.app`.
+**[Download Teleprompter for macOS (.dmg)](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest/download/Teleprompter-macOS.dmg)**
 
-1. Pega el guion y elige su idioma. Si necesitas preparar un idioma, abre **Configurar idiomas en Dictado…** y revisa **Teclado → Dictado → Idiomas**. La disponibilidad local depende del idioma y del Mac. Escribe las indicaciones de escena entre corchetes.
-2. Pulsa **Abrir lector**. Por defecto el panel mide **435 × 216 puntos** y se centra debajo de la cámara. Haz doble clic en el tramo libre de la franja superior para volver a centrarlo sin cambiar su tamaño. Puedes arrastrar sus bordes o cambiar **Ancho** en Ajustes. Teleprompter recuerda el tamaño que elijas.
-3. El lector empieza a escuchar al abrirse. Concede los permisos de micrófono y reconocimiento cuando macOS los solicite. El botón de escucha muestra la entrada activa junto con el control de pausa. Al cambiar de dispositivo, aparece un aviso breve con su nombre. Puedes desactivar **Escuchar al abrir el lector** en Ajustes. Puedes seguir en modo manual si el reconocimiento local para ese idioma no está disponible.
-4. La línea activa queda cerca del borde superior, con una línea anterior visible. Pulsa una palabra, usa las flechas o vuelve al inicio para ajustar la posición. En **Vista** puedes cambiar el tamaño del texto y la opacidad.
+Requires **macOS 14 or later**. The download supports Apple Silicon and Intel.
 
-## Compartir o grabar
+1. Open the disk image you downloaded.
+2. Drag **Teleprompter** into **Applications**, then open it from Applications.
+3. Use the Teleprompter icon in the menu bar to paste or edit a script and open the reader.
 
-Selecciona la ventana de la presentación o de la aplicación que vas a mostrar. Teleprompter permanece en su propio panel. También puedes activar **Solicitar exclusión de captura en macOS**. Esa opción usa una API heredada de AppKit y su efecto depende de cómo capture la otra aplicación. Comprueba la previsualización antes de compartir o grabar la pantalla completa.
+The public download uses ad hoc signing and is not notarized. If macOS blocks the download, you can build the app locally from the instructions below. When you first start listening, macOS may ask for microphone and speech recognition permissions.
 
-## Desarrollo
+## Read a script
 
-`swift test` comprueba el seguimiento de texto con transcripciones simuladas. `./scripts/build-app.sh` genera la aplicación en `dist/`.
+- Choose a speech recognition language in Settings. To prepare additional languages, open **Configure Dictation Languages**, then go to **Keyboard → Dictation → Languages** in System Settings. On-device availability varies by language and Mac.
+- Open the reader from a saved script or directly from the clipboard. Clipboard text does not replace the saved script. Stage directions in square brackets are skipped by voice tracking.
+- The reader opens below the camera. Drag its edges to resize it, or double-click the free strip at the top to put it back in position. Settings includes a live preview.
+- Click a word or use the navigation buttons to move manually. The current line stays near the top with one previous line visible. The listening button shows the current audio input. You can turn off automatic listening in Settings.
+- Settings includes optional Liquid Glass styling on macOS 26 and later. The Dock icon and menu bar icon can be hidden independently. You can reopen Settings with the Raycast script in [scripts/raycast](scripts/raycast) or with the URL `teleprompter://settings`.
 
-## Dock, barra de menús y accesos rápidos
+## Updates
 
-Desde el icono de la barra de menús puedes abrir el lector, leer texto copiado, editar el guion y cambiar el idioma, tamaño de letra, opacidad, desenfoque, color de resalto y exclusión de captura. La barra del micrófono mide la señal local mientras el lector escucha. En macOS 26 o posterior, puedes activar o desactivar **Liquid Glass** para el botón de escucha y los avisos. Con Teleprompter activo también puedes abrir **Controles rápidos** con **⌘⇧K**. El texto del portapapeles se carga en el lector sin reemplazar el guion guardado. El icono de la barra de menús reúne todos los ajustes. Si desactivas el icono, Ajustes vuelve a abrirse en una ventana. Los ajustes de Dock y barra de menús son independientes. Ocultar sus iconos no cambia la exclusión del lector al compartir pantalla.
+Choose **Check for Updates** in Settings. The app checks the latest stable GitHub release. If a newer version is available, use **Download and Open DMG** to download and verify it without opening a browser. Quit Teleprompter, drag the new app into Applications, and replace the old version. Your script and preferences are stored separately and carry over.
 
-- **Spotlight:** busca **Teleprompter** y ábrelo para recuperar los ajustes, aunque hayas ocultado ambos iconos. Para que Spotlight lo encuentre fácilmente, coloca la app en **Aplicaciones**.
-- **Raycast:** añade [scripts/raycast](scripts/raycast) como carpeta de Script Commands y busca **Ajustes de Teleprompter**. También puedes crear un Quicklink con `teleprompter://settings`.
+## Screen sharing and privacy
 
-## Arranque y permisos
+The script and recognition are processed on your Mac. **Request Capture Exclusion** asks macOS to exclude the reader window. Results depend on the app and capture method. Use the sharing preview to check the result before you start.
 
-Al arrancar, Teleprompter se queda en el Dock, en la barra de menús o en ambos, según tus ajustes. Si ocultas ambos iconos, muestra Ajustes al arrancar. Al abrir el lector se cierran las ventanas de edición y configuración. Ajustes muestra una vista previa bajo la cámara que refleja el tamaño, el resalto, la opacidad y el desenfoque sin activar el micrófono.
+## Build from source
 
-macOS puede volver a pedir acceso al micrófono y al reconocimiento al actualizar una compilación con firma ad hoc. Para compilaciones locales con una identidad de firma válida, usa `TELEPROMPTER_SIGN_IDENTITY` con el nombre o el hash de la identidad y conserva la misma en las siguientes compilaciones.
+Use Xcode 26 or later with its command-line tools selected.
+
+```sh
+swift test
+./scripts/build-app.sh
+open dist/Teleprompter.app
+```
+
+To package a universal disk image:
+
+```sh
+./scripts/build-app.sh --arch arm64 --arch x86_64
+./scripts/build-dmg.sh
+```
+
+Upload `dist/Teleprompter-macOS.dmg` to a stable GitHub release tagged `vMAJOR.MINOR.PATCH`. Keep the filename unchanged so the direct download and update checker can find it. For local development, set `TELEPROMPTER_SIGN_IDENTITY` to keep using the same signing identity across builds. Changes to an ad hoc build can cause macOS to ask for permissions again.

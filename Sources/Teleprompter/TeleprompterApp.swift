@@ -267,13 +267,14 @@ struct Editor: View {
                 Button("Abrir lector", systemImage: "play.fill") {
                     openReader(script)
                 }
-                .buttonStyle(.borderedProminent)
+                .modifier(PrimaryGlassButton(enabled: model.useLiquidGlass))
                 .keyboardShortcut(.return, modifiers: [.command])
                 .disabled(!script.contains(where: { $0.isLetter || $0.isNumber }))
             }
         }
         .padding(24)
         .frame(minWidth: 480, minHeight: 320)
+        .modifier(GlassControls(enabled: model.useLiquidGlass))
         .tint(Color(red: 0.22, green: 0.41, blue: 0.72))
     }
 }
@@ -374,7 +375,7 @@ struct Reader: View {
                 .accessibilityLabel(active ? "Pausar" : "Escuchar")
                 .accessibilityValue(audioName ?? "Entrada sin identificar")
                 .help((active ? "Pausar" : "Escuchar") + (audioName.map { " · " + $0 } ?? ""))
-                .modifier(ListenButtonAppearance(useLiquidGlass: model.useLiquidGlass, highlight: highlight, ink: ink))
+                .foregroundStyle(highlight)
                 .keyboardShortcut(.space, modifiers: [])
                 MicrophoneMeter(signal: model.microphone, active: model.listening)
                 Button("Reiniciar", systemImage: "arrow.counterclockwise") { model.seek(0) }
@@ -401,11 +402,12 @@ struct Reader: View {
                     .help(SpeechLanguage.name(model.locale))
                     .accessibilityLabel("\(model.listening ? "Siguiendo tu voz" : "Modo manual"), \(shownCursor) de \(shownScript.words.count) palabras")
                 Button("Cerrar lector", systemImage: "xmark", action: model.closeReader)
-                    .labelStyle(.iconOnly).buttonStyle(.plain)
+                    .labelStyle(.iconOnly)
                     .help("Cerrar lector")
                     .keyboardShortcut("w", modifiers: .command)
             }
             .controlSize(.small)
+            .modifier(GlassControls(enabled: model.useLiquidGlass))
             .padding(.horizontal, 14).padding(.vertical, 10)
             .background(ink.opacity(0.82))
         }

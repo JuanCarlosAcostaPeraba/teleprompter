@@ -13,7 +13,7 @@ struct QuickControls: View {
             } label: {
                 Label("Abrir lector", systemImage: "play.fill").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .modifier(PrimaryGlassButton(enabled: model.useLiquidGlass))
             HStack {
                 Button("Desde el portapapeles", systemImage: "clipboard") { desktop.openReader(fromClipboard: true) }
                 Button("Editar guion", systemImage: "square.and.pencil", action: desktop.openEditor)
@@ -24,6 +24,8 @@ struct QuickControls: View {
                     ReaderControls(model: model)
                     Divider()
                     AppAccessControls(desktop: desktop)
+                    Divider()
+                    UpdateControls(updater: desktop.updater)
                 }
             }
             .frame(height: 390)
@@ -35,6 +37,7 @@ struct QuickControls: View {
         }
         .padding(15)
         .frame(width: 370)
+        .modifier(GlassControls(enabled: model.useLiquidGlass))
     }
 }
 
@@ -59,10 +62,12 @@ struct Preferences: View {
             GroupBox("Acceso a la app") {
                 AppAccessControls(desktop: desktop).padding(5)
             }
+            GroupBox("Actualizaciones") { UpdateControls(updater: desktop.updater).padding(5) }
             Spacer(minLength: 0)
         }
         .padding(20)
         .frame(width: 430)
+        .modifier(GlassControls(enabled: model.useLiquidGlass))
     }
 }
 
@@ -86,7 +91,6 @@ struct ReaderControls: View {
             SpeechLanguagePicker(title: "Idioma de voz", selection: $model.locale)
             Button("Configurar idiomas en Dictado…", systemImage: "arrow.up.right.square",
                    action: SpeechLanguage.openDictationSettings)
-                .buttonStyle(.link)
                 .help("Abre Ajustes del Sistema → Teclado → Dictado → Idiomas")
             HStack {
                 Text("Texto").frame(width: 62, alignment: .leading)
