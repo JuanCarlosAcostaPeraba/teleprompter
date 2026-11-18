@@ -34,7 +34,7 @@ The public download uses ad hoc signing and is not notarized. If macOS blocks th
 
 Teleprompter checks the latest stable GitHub release at startup and once a day while open. A new version appears in Settings and marks the menu bar and Dock icons when visible. You can also choose **Check for Updates** in Settings.
 
-Click **Download and Open DMG** to download and verify the installer from the app. Then quit Teleprompter and drag the new app to Applications to replace the old version.
+When an update is available, **Download** takes the place of **Check for Updates**. Click it to download the verified installer. Then quit Teleprompter and drag the new app to Applications to replace the old version.
 
 ## Screen sharing and privacy
 

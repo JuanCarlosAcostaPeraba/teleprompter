@@ -34,7 +34,7 @@ La descarga pública usa firma ad hoc y carece de notarización. Si macOS bloque
 
 Teleprompter consulta la última versión estable de GitHub al abrirse y una vez al día mientras sigue en marcha. Cuando hay una versión nueva, aparece en Ajustes y se indica en los iconos de la barra de menús y del Dock si están visibles. También puedes pulsar **Buscar actualizaciones** en Ajustes.
 
-Pulsa **Descargar y abrir DMG** para descargar y verificar el instalador desde la app. Después, cierra Teleprompter y arrastra la nueva app a Aplicaciones para reemplazar la anterior.
+Cuando hay una actualización disponible, **Descargar** sustituye a **Buscar actualizaciones**. Púlsalo para descargar el instalador verificado. Después, cierra Teleprompter y arrastra la nueva app a Aplicaciones para reemplazar la anterior.
 
 ## Captura y privacidad
 

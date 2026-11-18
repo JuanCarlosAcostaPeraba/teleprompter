@@ -80,7 +80,7 @@ final class AppUpdater: ObservableObject {
             do {
                 let file = try await Self.downloadDiskImage(url: url, digest: expected, version: version)
                 guard NSWorkspace.shared.open(file) else { throw UpdateError.couldNotOpen }
-                status = "DMG abierto. Cierra Teleprompter y reemplázalo en Aplicaciones."
+                status = "Descarga completada. Cierra Teleprompter y reemplázalo en Aplicaciones."
             } catch {
                 status = "No se pudo preparar el DMG: \(error.localizedDescription)"
             }
@@ -184,10 +184,20 @@ struct UpdateControls<Trailing: View>: View {
     @ViewBuilder let trailing: () -> Trailing
 
     var body: some View {
+        let updateAvailable = updater.available != nil
         VStack(alignment: .leading, spacing: 7) {
             HStack {
-                Button("Buscar actualizaciones", systemImage: "arrow.clockwise", action: updater.check)
-                    .disabled(updater.busy)
+                Button(
+                    updateAvailable ? "Descargar" : "Buscar actualizaciones",
+                    systemImage: updateAvailable ? "arrow.down.to.line" : "arrow.clockwise"
+                ) {
+                    if updateAvailable {
+                        updater.download()
+                    } else {
+                        updater.check()
+                    }
+                }
+                .disabled(updater.busy)
                 if updater.busy { ProgressView().controlSize(.small) }
                 Spacer(minLength: 0)
                 trailing()
@@ -195,10 +205,6 @@ struct UpdateControls<Trailing: View>: View {
             if let status = updater.status {
                 Text(status).font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-            }
-            if updater.available != nil {
-                Button("Descargar y abrir DMG", systemImage: "arrow.down.to.line", action: updater.download)
-                    .disabled(updater.busy)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
