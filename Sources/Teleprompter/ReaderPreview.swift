@@ -6,7 +6,7 @@ enum CameraPlacement {
     static let defaultReaderWidth = 435.0
     static let defaultReaderHeight = 216.0
     static let readerWidthRange = 400.0...1200.0
-    static let readerHeaderHeight = 20.0
+    static let readerHeaderHeight = 16.0
 
     static func previewSize(width: Double) -> NSSize {
         NSSize(width: width, height: defaultReaderHeight)

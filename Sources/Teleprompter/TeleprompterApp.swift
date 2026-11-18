@@ -289,7 +289,7 @@ private final class ReaderPanel: NSPanel {
         let point = event.locationInWindow
         switch event.type {
         case .leftMouseDown:
-            if (5...CameraPlacement.readerHeaderHeight).contains(frame.height - point.y), point.x > 10, point.x < frame.width - 46 {
+            if (5...CameraPlacement.readerHeaderHeight).contains(frame.height - point.y), point.x > 10, point.x < frame.width - 10 {
                 if event.clickCount == 2 {
                     dragOffset = nil
                     centerUnderCamera()
@@ -337,24 +337,10 @@ struct Reader: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .contentShape(Rectangle())
-                    .help("Arrastra para mover el lector. Doble clic para centrarlo bajo la cámara.")
-                HStack(spacing: 8) {
-                    Text(model.microphoneName ?? "Entrada de audio")
-                        .font(.caption).foregroundStyle(.secondary)
-                        .lineLimit(1).truncationMode(.tail)
-                        .help(model.microphoneName ?? "La entrada se identifica al activar la escucha")
-                        .accessibilityLabel("Entrada de audio: \(model.microphoneName ?? "sin identificar")")
-                    Button("Cerrar lector", systemImage: "xmark", action: model.closeReader)
-                        .labelStyle(.iconOnly).buttonStyle(.plain)
-                        .keyboardShortcut("w", modifiers: .command)
-                }
-                .offset(y: 3)
-            }
-            .padding(.horizontal, 16)
-            .frame(height: CameraPlacement.readerHeaderHeight)
+            Color.clear
+                .frame(height: CameraPlacement.readerHeaderHeight)
+                .contentShape(Rectangle())
+                .help("Arrastra para mover el lector. Doble clic para centrarlo bajo la cámara.")
             GeometryReader { geometry in
                 ReaderText(model: model, size: geometry.size, script: shownScript, scriptID: shownScriptID,
                            cursor: shownCursor, allowsSeeking: !isPreview)
@@ -381,6 +367,7 @@ struct Reader: View {
                 .tint(highlight.opacity(0.75))
                 .foregroundStyle(ink)
                 .keyboardShortcut(.space, modifiers: [])
+                AudioInputIcon(name: model.microphoneName)
                 MicrophoneMeter(signal: model.microphone, active: model.listening)
                 Button("Reiniciar", systemImage: "arrow.counterclockwise") { model.seek(0) }
                     .labelStyle(.iconOnly)
@@ -405,6 +392,10 @@ struct Reader: View {
                     .lineLimit(1)
                     .help(SpeechLanguage.name(model.locale))
                     .accessibilityLabel("\(model.listening ? "Siguiendo tu voz" : "Modo manual"), \(shownCursor) de \(shownScript.words.count) palabras")
+                Button("Cerrar lector", systemImage: "xmark", action: model.closeReader)
+                    .labelStyle(.iconOnly).buttonStyle(.plain)
+                    .help("Cerrar lector")
+                    .keyboardShortcut("w", modifiers: .command)
             }
             .controlSize(.small)
             .padding(.horizontal, 14).padding(.vertical, 10)
@@ -425,6 +416,28 @@ struct Reader: View {
         }
     }
 
+}
+
+private struct AudioInputIcon: View {
+    let name: String?
+
+    private var symbol: String {
+        guard let name else { return "mic" }
+        if name.localizedCaseInsensitiveContains("AirPods") {
+            if name.localizedCaseInsensitiveContains("Max") { return "airpodsmax" }
+            if name.localizedCaseInsensitiveContains("Pro") { return "airpodspro" }
+            return "airpods"
+        }
+        return name.localizedCaseInsensitiveContains("MacBook") ? "laptopcomputer" : "mic"
+    }
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 13))
+            .foregroundStyle(.secondary)
+            .help(name ?? "La entrada se identifica al activar la escucha")
+            .accessibilityLabel("Entrada de audio: \(name ?? "sin identificar")")
+    }
 }
 
 @MainActor
