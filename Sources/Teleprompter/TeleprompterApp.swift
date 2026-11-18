@@ -374,9 +374,7 @@ struct Reader: View {
                 .accessibilityLabel(active ? "Pausar" : "Escuchar")
                 .accessibilityValue(audioName ?? "Entrada sin identificar")
                 .help((active ? "Pausar" : "Escuchar") + (audioName.map { " · " + $0 } ?? ""))
-                .buttonStyle(.borderedProminent)
-                .tint(highlight.opacity(0.75))
-                .foregroundStyle(ink)
+                .modifier(ListenButtonAppearance(useLiquidGlass: model.useLiquidGlass, highlight: highlight, ink: ink))
                 .keyboardShortcut(.space, modifiers: [])
                 MicrophoneMeter(signal: model.microphone, active: model.listening)
                 Button("Reiniciar", systemImage: "arrow.counterclockwise") { model.seek(0) }
@@ -409,7 +407,7 @@ struct Reader: View {
             }
             .controlSize(.small)
             .padding(.horizontal, 14).padding(.vertical, 10)
-            .modifier(ReaderChrome(useLiquidGlass: model.useLiquidGlass, fallback: ink.opacity(0.86)))
+            .background(ink.opacity(0.82))
         }
         .modifier(ReaderSurface(blur: model.blurBackground, opacity: model.opacity))
         .overlay(alignment: .topTrailing) {
@@ -418,7 +416,7 @@ struct Reader: View {
                     .font(.caption.weight(.semibold))
                     .lineLimit(1)
                     .padding(.horizontal, 10).padding(.vertical, 6)
-                    .modifier(ReaderChrome(useLiquidGlass: model.useLiquidGlass, fallback: ink.opacity(0.94)))
+                    .modifier(AudioNoticeSurface(useLiquidGlass: model.useLiquidGlass, fallback: ink.opacity(0.94)))
                     .padding(8)
                     .allowsHitTesting(false)
                     .transition(reduceMotion ? .opacity : .offset(y: -8).combined(with: .opacity))

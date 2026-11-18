@@ -45,16 +45,32 @@ struct ReaderSurface: ViewModifier {
     }
 }
 
-struct ReaderChrome: ViewModifier {
+struct AudioNoticeSurface: ViewModifier {
     let useLiquidGlass: Bool
     let fallback: Color
 
     func body(content: Content) -> some View {
         if #available(macOS 26, *), useLiquidGlass {
             content
-                .glassEffect(.regular.tint(fallback.opacity(0.45)), in: .rect(cornerRadius: 12))
+                .glassEffect(.regular, in: .capsule)
         } else {
             content.background(fallback, in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+}
+
+struct ListenButtonAppearance: ViewModifier {
+    let useLiquidGlass: Bool
+    let highlight: Color
+    let ink: Color
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *), useLiquidGlass {
+            content.buttonStyle(.glass).foregroundStyle(highlight)
+        } else {
+            content.buttonStyle(.borderedProminent)
+                .tint(highlight.opacity(0.75))
+                .foregroundStyle(ink)
         }
     }
 }

@@ -73,8 +73,6 @@ private struct AppAccessControls: View {
         VStack(alignment: .leading, spacing: 7) {
             Toggle("Mostrar en el Dock", isOn: $desktop.showDock)
             Toggle("Mostrar en la barra de menús", isOn: $desktop.showMenuBar)
-            Text("También puedes abrir Ajustes desde Raycast o Spotlight.")
-                .font(.caption).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
