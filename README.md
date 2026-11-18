@@ -20,3 +20,10 @@ Selecciona la ventana de la presentación o de la aplicación que vas a mostrar.
 ## Desarrollo
 
 `swift test` comprueba el seguimiento de texto con transcripciones simuladas. `./scripts/build-app.sh` genera la aplicación en `dist/`.
+
+## Dock, barra de menús y accesos rápidos
+
+Desde el icono de la barra de menús puedes abrir el lector, leer texto copiado, editar el guion y cambiar el idioma, tamaño de letra, opacidad y exclusión de captura. Los ajustes de Dock y barra de menús son independientes. Ocultar sus iconos no cambia la exclusión del lector al compartir pantalla.
+
+- **Spotlight:** busca **Teleprompter** y ábrelo para recuperar los ajustes, aunque hayas ocultado ambos iconos. Para que Spotlight lo encuentre fácilmente, coloca la app en **Aplicaciones**.
+- **Raycast:** añade [scripts/raycast](scripts/raycast) como carpeta de Script Commands y busca **Ajustes de Teleprompter**. También puedes crear un Quicklink con `teleprompter://settings`.

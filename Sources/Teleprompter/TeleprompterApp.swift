@@ -11,20 +11,40 @@ final class Prompter: ObservableObject {
     @Published private(set) var error: String?
     @Published var showTranscript = false
     @Published private(set) var transcript = ""
-    @Published var fontSize = 32.0
-    @Published var opacity = 0.96
+    @Published var fontSize = UserDefaults.standard.object(forKey: "fontSize") as? Double ?? 32 {
+        didSet { UserDefaults.standard.set(fontSize, forKey: "fontSize") }
+    }
+    @Published var opacity = UserDefaults.standard.object(forKey: "opacity") as? Double ?? 0.96 {
+        didSet { UserDefaults.standard.set(opacity, forKey: "opacity") }
+    }
+    @Published var locale = UserDefaults.standard.string(forKey: "locale") ?? "es-ES" {
+        didSet {
+            UserDefaults.standard.set(locale, forKey: "locale")
+            if oldValue != locale { pause() }
+        }
+    }
+    @Published var limitCapture = UserDefaults.standard.object(forKey: "limitCapture") as? Bool ?? true {
+        didSet {
+            UserDefaults.standard.set(limitCapture, forKey: "limitCapture")
+            panel?.sharingType = limitCapture ? .none : .readOnly
+        }
+    }
+
+    var readerIsVisible: Bool { panel?.isVisible == true }
+
+    func raiseReader() {
+        panel?.makeKeyAndOrderFront(nil)
+    }
     private let speech = SpeechInput()
     private var panel: NSPanel?
     private var previous = ""
-    private var locale = "es-ES"
 
-    func show(text: String, locale: String, limitCapture: Bool) {
+    func show(text: String) {
         pause()
         script = Script(text)
         guard !script.words.isEmpty else { return }
         cursor = 0
         error = nil
-        self.locale = locale
         if panel == nil {
             let panel = NSPanel(
                 contentRect: NSRect(x: 0, y: 0, width: 660, height: 320),
@@ -32,6 +52,10 @@ final class Prompter: ObservableObject {
                 backing: .buffered, defer: false
             )
             panel.title = "Lector · Teleprompter"
+            panel.titleVisibility = .hidden
+            panel.titlebarAppearsTransparent = true
+            panel.isMovableByWindowBackground = true
+            panel.setFrameAutosaveName("Teleprompter Reader")
             panel.minSize = NSSize(width: 400, height: 220)
             panel.isReleasedWhenClosed = false
             panel.hidesOnDeactivate = false
@@ -94,37 +118,28 @@ final class Prompter: ObservableObject {
     }
 }
 
-@main
-struct TeleprompterApp: App {
-    @StateObject private var model = Prompter()
-
-    var body: some Scene {
-        Window("Teleprompter", id: "editor") {
-            Editor(model: model)
-        }
-        .defaultSize(width: 760, height: 590)
-    }
-}
-
 struct Editor: View {
     @ObservedObject var model: Prompter
     @AppStorage("script") private var script = ""
-    @AppStorage("locale") private var locale = "es-ES"
-    @AppStorage("limitCapture") private var limitCapture = true
+    let openSettings: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Teleprompter").font(.system(size: 36, weight: .bold, design: .serif))
+                Text("Guion").font(.system(size: 29, weight: .semibold))
                 Spacer()
-                Picker("Voz", selection: $locale) {
+                Picker("Voz", selection: $model.locale) {
                     Text("Español").tag("es-ES")
                     Text("English").tag("en-US")
-                }.pickerStyle(.segmented).frame(width: 205)
+                }.pickerStyle(.segmented).frame(width: 170)
+                Button(action: openSettings) {
+                    Image(systemName: "gearshape")
+                }
+                .help("Ajustes")
+                .accessibilityLabel("Ajustes")
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Guion").font(.headline)
                 ZStack(alignment: .topLeading) {
                     TextEditor(text: $script)
                         .font(.system(size: 17))
@@ -142,18 +157,12 @@ struct Editor: View {
                 .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(.quaternary) }
             }
 
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle("Solicitar exclusión de captura en macOS", isOn: $limitCapture)
-                Text("Al compartir, selecciona solo la ventana de destino. La exclusión de Teleprompter puede variar según la aplicación que captura.")
-                    .font(.callout).foregroundStyle(.secondary)
-            }
-
             HStack {
                 Text("Usa [corchetes] para indicaciones que no leas.")
                     .font(.callout).foregroundStyle(.secondary)
                 Spacer()
                 Button("Abrir lector", systemImage: "play.fill") {
-                    model.show(text: script, locale: locale, limitCapture: limitCapture)
+                    model.show(text: script)
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.return, modifiers: [.command])
@@ -161,7 +170,7 @@ struct Editor: View {
             }
         }
         .padding(24)
-        .frame(minWidth: 560, minHeight: 420)
+        .frame(minWidth: 480, minHeight: 320)
         .tint(Color(red: 0.22, green: 0.41, blue: 0.72))
     }
 }
