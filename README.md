@@ -9,7 +9,7 @@ Descarga `Teleprompter-macOS.zip` en [Releases](https://github.com/JuanCarlosAco
 Para compilar desde el código, ejecuta `./scripts/build-app.sh` con Swift 6 o posterior y abre `dist/Teleprompter.app`.
 
 1. Pega el guion y elige su idioma. Si necesitas preparar un idioma, abre **Configurar idiomas en Dictado…** y revisa **Teclado → Dictado → Idiomas**. La disponibilidad local depende del idioma y del Mac. Escribe las indicaciones de escena entre corchetes.
-2. Pulsa **Abrir lector**. Por defecto el panel mide **435 × 216 puntos** y se centra debajo de la cámara. Haz doble clic en la franja superior para volver a centrarlo sin cambiar su tamaño. Puedes arrastrar sus bordes o cambiar **Ancho** en Ajustes. Teleprompter recuerda el tamaño que elijas.
+2. Pulsa **Abrir lector**. Por defecto el panel mide **435 × 216 puntos** y se centra debajo de la cámara. Haz doble clic en el tramo libre de la franja superior para volver a centrarlo sin cambiar su tamaño. Puedes arrastrar sus bordes o cambiar **Ancho** en Ajustes. Teleprompter recuerda el tamaño que elijas.
 3. El lector empieza a escuchar al abrirse. Concede los permisos de micrófono y reconocimiento cuando macOS los solicite. Verás el nombre de la entrada junto al medidor. Puedes desactivar **Escuchar al abrir el lector** en Ajustes. Puedes seguir en modo manual si el reconocimiento local para ese idioma no está disponible.
 4. La línea activa queda cerca del borde superior, con una línea anterior visible. Pulsa una palabra, usa las flechas o vuelve al inicio para ajustar la posición. En **Vista** puedes cambiar el tamaño del texto y la opacidad.
 

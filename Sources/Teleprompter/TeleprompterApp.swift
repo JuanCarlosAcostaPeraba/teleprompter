@@ -289,7 +289,7 @@ private final class ReaderPanel: NSPanel {
         let point = event.locationInWindow
         switch event.type {
         case .leftMouseDown:
-            if (8...40).contains(frame.height - point.y), point.x > 10, point.x < frame.width - 46 {
+            if (5...CameraPlacement.readerHeaderHeight).contains(frame.height - point.y), point.x > 10, point.x < frame.width - 46 {
                 if event.clickCount == 2 {
                     dragOffset = nil
                     centerUnderCamera()
@@ -318,17 +318,28 @@ private final class ReaderPanel: NSPanel {
 
 struct Reader: View {
     @ObservedObject var model: Prompter
+    var isPreview = false
+    private static let previewSpanish = Script("Así se verá el guion mientras lees. La línea activa se mantiene cerca de la cámara.", locale: "es-ES")
+    private static let previewEnglish = Script("This is how your script will look as you read. The active line stays close to the camera.", locale: "en-US")
+    private static let previewSpanishID = UUID()
+    private static let previewEnglishID = UUID()
+
+    private var spanish: Bool { Locale(identifier: model.locale).language.languageCode?.identifier == "es" }
+    private var shownScript: Script {
+        isPreview ? (spanish ? Self.previewSpanish : Self.previewEnglish) : model.script
+    }
+    private var shownScriptID: UUID {
+        isPreview ? (spanish ? Self.previewSpanishID : Self.previewEnglishID) : model.scriptID
+    }
+    private var shownCursor: Int { isPreview ? 0 : model.cursor }
     private let ink = Color(red: 0.06, green: 0.09, blue: 0.15)
     private var highlight: Color { model.highlightColor }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Label("Teleprompter", systemImage: "text.alignleft")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(highlight)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
+                Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
                     .help("Arrastra para mover el lector. Doble clic para centrarlo bajo la cámara.")
                 Text(model.microphoneName ?? "Entrada de audio")
                     .font(.caption).foregroundStyle(.secondary)
@@ -339,15 +350,17 @@ struct Reader: View {
                     .labelStyle(.iconOnly).buttonStyle(.plain)
                     .keyboardShortcut("w", modifiers: .command)
             }
-            .padding(.horizontal, 18).padding(.top, 12)
+            .padding(.horizontal, 16)
+            .frame(height: CameraPlacement.readerHeaderHeight)
             GeometryReader { geometry in
-                ReaderText(model: model, size: geometry.size)
+                ReaderText(model: model, size: geometry.size, script: shownScript, scriptID: shownScriptID,
+                           cursor: shownCursor, allowsSeeking: !isPreview)
             }
             .clipped()
-            if let error = model.error {
+            if !isPreview, let error = model.error {
                 Text(error).font(.caption).foregroundStyle(.yellow).padding(.horizontal, 18)
             }
-            if model.showTranscript && !model.transcript.isEmpty {
+            if !isPreview, model.showTranscript && !model.transcript.isEmpty {
                 Text(model.transcript).font(.caption).lineLimit(2).truncationMode(.head)
                     .foregroundStyle(.secondary).padding(.horizontal, 18).padding(.bottom, 4)
             }
@@ -384,25 +397,26 @@ struct Reader: View {
                 }
                 .labelStyle(.iconOnly).fixedSize()
                 Spacer(minLength: 0)
-                Text("\(model.locale)  ·  \(model.cursor)/\(model.script.words.count)")
+                Text("\(model.locale)  ·  \(shownCursor)/\(shownScript.words.count)")
                     .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                     .lineLimit(1)
                     .help(SpeechLanguage.name(model.locale))
-                    .accessibilityLabel("\(model.listening ? "Siguiendo tu voz" : "Modo manual"), \(model.cursor) de \(model.script.words.count) palabras")
+                    .accessibilityLabel("\(model.listening ? "Siguiendo tu voz" : "Modo manual"), \(shownCursor) de \(shownScript.words.count) palabras")
             }
             .controlSize(.small)
             .padding(.horizontal, 14).padding(.vertical, 10)
             .background(ink.opacity(0.86))
         }
         .modifier(ReaderSurface(blur: model.blurBackground, opacity: model.opacity))
-        .onDisappear { model.pause() }
+        .allowsHitTesting(!isPreview)
+        .onDisappear { if !isPreview { model.pause() } }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResizeNotification)) { notification in
-            if let window = notification.object as? NSWindow {
+            if !isPreview, let window = notification.object as? NSWindow {
                 model.rememberReaderWidth(window)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { notification in
-            if let window = notification.object as? NSPanel, window.contentView is NSHostingView<Reader> {
+            if !isPreview, notification.object is ReaderPanel {
                 model.pause()
             }
         }

@@ -1,16 +1,23 @@
 import AppKit
+import ScriptTracking
 import SwiftUI
 
 struct ReaderText: NSViewRepresentable {
     @ObservedObject var model: Prompter
     let size: CGSize
+    let script: Script
+    let scriptID: UUID
+    let cursor: Int
+    let allowsSeeking: Bool
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSScrollView()
         let coordinator = context.coordinator
-        coordinator.seek = { [weak model] in model?.seek($0) }
+        if allowsSeeking {
+            coordinator.seek = { [weak model] in model?.seek($0) }
+        }
         scroll.drawsBackground = false
         scroll.hasVerticalScroller = true
         scroll.scrollerStyle = .overlay
@@ -20,7 +27,8 @@ struct ReaderText: NSViewRepresentable {
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
-        context.coordinator.update(model: model, size: size, scroll: scroll)
+        context.coordinator.update(script: script, scriptID: scriptID, cursor: cursor, fontSize: model.fontSize,
+                                   color: model.highlightColor, size: size, scroll: scroll)
     }
 
     @MainActor
@@ -52,18 +60,19 @@ struct ReaderText: NSViewRepresentable {
             textView.isSelectable = true
             textView.isRichText = true
             textView.isVerticallyResizable = false
-            textView.textContainerInset = NSSize(width: 22, height: 4)
+            textView.textContainerInset = NSSize(width: 22, height: 2)
             textView.linkTextAttributes = [:]
         }
 
-        func update(model: Prompter, size: CGSize, scroll: NSScrollView) {
+        func update(script: Script, scriptID: UUID, cursor: Int, fontSize: Double, color: Color,
+                    size: CGSize, scroll: NSScrollView) {
             guard size.width > 48, size.height > 0 else { return }
-            let font = NSFont.systemFont(ofSize: model.fontSize, weight: .medium)
-            let highlight = NSColor(model.highlightColor)
-            let rebuild = renderedScript != model.scriptID || renderedFontSize != model.fontSize
+            let font = NSFont.systemFont(ofSize: fontSize, weight: .medium)
+            let highlight = NSColor(color)
+            let rebuild = renderedScript != scriptID || renderedFontSize != fontSize
                 || renderedColor != highlight
             let resized = renderedSize != size
-            let moved = renderedCursor != model.cursor
+            let moved = renderedCursor != cursor
             guard rebuild || resized || moved else { return }
 
             if rebuild {
@@ -74,10 +83,10 @@ struct ReaderText: NSViewRepresentable {
                 ]
                 let text = NSMutableAttributedString(string: "\n", attributes: base)
                 ranges.removeAll(keepingCapacity: true)
-                for token in model.script.tokens {
+                for token in script.tokens {
                     var attributes = base
                     if let index = token.wordIndex {
-                        let color = index == model.cursor ? highlight : index < model.cursor ? readColor : .white
+                        let color = index == cursor ? highlight : index < cursor ? readColor : .white
                         attributes[.foregroundColor] = color
                         attributes[.link] = URL(string: "teleprompter://\(index)")
                         ranges.append(NSRange(location: text.length, length: token.text.utf16.count))
@@ -87,16 +96,16 @@ struct ReaderText: NSViewRepresentable {
                     text.append(NSAttributedString(string: token.text, attributes: attributes))
                 }
                 storage.setAttributedString(text)
-                renderedScript = model.scriptID
-                renderedFontSize = model.fontSize
+                renderedScript = scriptID
+                renderedFontSize = fontSize
                 renderedColor = highlight
             } else if moved {
                 storage.beginEditing()
-                let first = max(0, min(renderedCursor, model.cursor))
-                let last = min(ranges.count - 1, max(renderedCursor, model.cursor))
+                let first = max(0, min(renderedCursor, cursor))
+                let last = min(ranges.count - 1, max(renderedCursor, cursor))
                 if first <= last {
                     for index in first...last {
-                        let color = index == model.cursor ? highlight : index < model.cursor ? readColor : .white
+                        let color = index == cursor ? highlight : index < cursor ? readColor : .white
                         storage.addAttribute(.foregroundColor, value: color, range: ranges[index])
                     }
                 }
@@ -111,12 +120,12 @@ struct ReaderText: NSViewRepresentable {
                 textView.setFrameSize(NSSize(width: size.width, height: height))
                 renderedSize = size
             }
-            renderedCursor = model.cursor
+            renderedCursor = cursor
             guard !ranges.isEmpty else { return }
 
             // Keep one prior line above the active word and leave room to align
             // the final line even when the bottom of the script is in view.
-            let range = ranges[min(model.cursor, ranges.count - 1)]
+            let range = ranges[min(cursor, ranges.count - 1)]
             let glyph = layout.glyphIndexForCharacter(at: range.location)
             let lineTop = layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil).minY
             let contextHeight = layout.defaultLineHeight(for: font) + 5

@@ -6,10 +6,10 @@ enum CameraPlacement {
     static let defaultReaderWidth = 435.0
     static let defaultReaderHeight = 216.0
     static let readerWidthRange = 400.0...1200.0
-    static let previewHeight = 204.0
+    static let readerHeaderHeight = 22.0
 
     static func previewSize(width: Double) -> NSSize {
-        NSSize(width: width, height: previewHeight)
+        NSSize(width: width, height: defaultReaderHeight)
     }
 
     static var screen: NSScreen? {
@@ -42,34 +42,6 @@ struct ReaderSurface: ViewModifier {
             .clipShape(RoundedRectangle(cornerRadius: 19))
             .overlay { RoundedRectangle(cornerRadius: 19).strokeBorder(.white.opacity(0.16)) }
             .preferredColorScheme(.dark)
-    }
-}
-
-struct ReaderPreview: View {
-    @ObservedObject var model: Prompter
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Label("Vista previa · Teleprompter", systemImage: "text.alignleft")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(model.highlightColor)
-            Group {
-                if Locale(identifier: model.locale).language.languageCode?.identifier == "es" {
-                    Text("Así ").foregroundStyle(model.highlightColor) +
-                    Text("se verá el guion mientras lees.").foregroundStyle(.white)
-                } else {
-                    Text("This ").foregroundStyle(model.highlightColor) +
-                    Text("is how your script will look as you read.").foregroundStyle(.white)
-                }
-            }
-            .font(.system(size: model.fontSize, weight: .medium))
-            .lineSpacing(5)
-            .lineLimit(2)
-            Spacer(minLength: 0)
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .modifier(ReaderSurface(blur: model.blurBackground, opacity: model.opacity))
     }
 }
 

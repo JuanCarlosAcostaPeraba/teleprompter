@@ -131,7 +131,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
             panel.hidesOnDeactivate = true
             panel.ignoresMouseEvents = true
             panel.sharingType = .none
-            panel.contentView = NSHostingView(rootView: ReaderPreview(model: model))
+            panel.contentView = NSHostingView(rootView: Reader(model: model, isPreview: true))
             preview = panel
         }
         if let preview {
