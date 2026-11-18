@@ -75,7 +75,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
             return
         }
         if settings == nil {
-            settings = makeWindow(title: "Ajustes de Teleprompter", size: NSSize(width: 430, height: 525),
+            settings = makeWindow(title: "Ajustes de Teleprompter", size: NSSize(width: 430, height: 548),
                                   content: Preferences(desktop: self, model: model))
             settings?.delegate = self
         }

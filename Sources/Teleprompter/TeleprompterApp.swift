@@ -16,6 +16,9 @@ final class Prompter: ObservableObject {
     @Published var listenOnOpen = UserDefaults.standard.object(forKey: "listenOnOpen") as? Bool ?? true {
         didSet { UserDefaults.standard.set(listenOnOpen, forKey: "listenOnOpen") }
     }
+    @Published var useLiquidGlass = UserDefaults.standard.object(forKey: "useLiquidGlass") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(useLiquidGlass, forKey: "useLiquidGlass") }
+    }
     @Published var blurBackground = UserDefaults.standard.object(forKey: "blurBackground") as? Bool ?? true {
         didSet { UserDefaults.standard.set(blurBackground, forKey: "blurBackground") }
     }
@@ -319,6 +322,8 @@ private final class ReaderPanel: NSPanel {
 struct Reader: View {
     @ObservedObject var model: Prompter
     var isPreview = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var audioNotice: String?
     private static let previewSpanish = Script("Así se verá el guion mientras lees. La línea activa se mantiene cerca de la cámara.", locale: "es-ES")
     private static let previewEnglish = Script("This is how your script will look as you read. The active line stays close to the camera.", locale: "en-US")
     private static let previewSpanishID = UUID()
@@ -355,19 +360,24 @@ struct Reader: View {
             }
             Divider()
             HStack(spacing: 8) {
-                Button {
-                    model.toggleVoice()
-                } label: {
-                    Label(model.listening || model.starting ? "Pausar" : "Escuchar",
-                          systemImage: model.listening || model.starting ? "pause.fill" : "mic.fill")
+                let active = model.listening || model.starting
+                let audioName = model.microphoneName
+                Button(action: model.toggleVoice) {
+                    HStack(spacing: 4) {
+                        Image(systemName: audioInputSymbol(for: audioName))
+                        if active {
+                            Image(systemName: "pause.fill")
+                                .font(.system(size: 8, weight: .semibold))
+                        }
+                    }
                 }
-                .labelStyle(.iconOnly)
-                .help(model.listening || model.starting ? "Pausar" : "Escuchar")
+                .accessibilityLabel(active ? "Pausar" : "Escuchar")
+                .accessibilityValue(audioName ?? "Entrada sin identificar")
+                .help((active ? "Pausar" : "Escuchar") + (audioName.map { " · " + $0 } ?? ""))
                 .buttonStyle(.borderedProminent)
                 .tint(highlight.opacity(0.75))
                 .foregroundStyle(ink)
                 .keyboardShortcut(.space, modifiers: [])
-                AudioInputIcon(name: model.microphoneName)
                 MicrophoneMeter(signal: model.microphone, active: model.listening)
                 Button("Reiniciar", systemImage: "arrow.counterclockwise") { model.seek(0) }
                     .labelStyle(.iconOnly)
@@ -399,11 +409,36 @@ struct Reader: View {
             }
             .controlSize(.small)
             .padding(.horizontal, 14).padding(.vertical, 10)
-            .background(ink.opacity(0.86))
+            .modifier(ReaderChrome(useLiquidGlass: model.useLiquidGlass, fallback: ink.opacity(0.86)))
         }
         .modifier(ReaderSurface(blur: model.blurBackground, opacity: model.opacity))
+        .overlay(alignment: .topTrailing) {
+            if let audioNotice, !isPreview {
+                Label(audioNotice, systemImage: audioInputSymbol(for: audioNotice))
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .modifier(ReaderChrome(useLiquidGlass: model.useLiquidGlass, fallback: ink.opacity(0.94)))
+                    .padding(8)
+                    .allowsHitTesting(false)
+                    .transition(reduceMotion ? .opacity : .offset(y: -8).combined(with: .opacity))
+            }
+        }
         .allowsHitTesting(!isPreview)
-        .onDisappear { if !isPreview { model.pause() } }
+        .onChange(of: model.microphoneName) { _, name in
+            guard !isPreview, let name else { return }
+            withAnimation(.easeOut(duration: 0.16)) { audioNotice = name }
+        }
+        .task(id: audioNotice) {
+            guard audioNotice != nil else { return }
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeIn(duration: 0.15)) { audioNotice = nil }
+        }
+        .onDisappear {
+            if !isPreview { model.pause() }
+            audioNotice = nil
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResizeNotification)) { notification in
             if !isPreview, let window = notification.object as? NSWindow {
                 model.rememberReaderWidth(window)
@@ -418,26 +453,14 @@ struct Reader: View {
 
 }
 
-private struct AudioInputIcon: View {
-    let name: String?
-
-    private var symbol: String {
-        guard let name else { return "mic" }
-        if name.localizedCaseInsensitiveContains("AirPods") {
-            if name.localizedCaseInsensitiveContains("Max") { return "airpodsmax" }
-            if name.localizedCaseInsensitiveContains("Pro") { return "airpodspro" }
-            return "airpods"
-        }
-        return name.localizedCaseInsensitiveContains("MacBook") ? "laptopcomputer" : "mic"
+private func audioInputSymbol(for name: String?) -> String {
+    guard let name else { return "mic" }
+    if name.localizedCaseInsensitiveContains("AirPods") {
+        if name.localizedCaseInsensitiveContains("Max") { return "airpodsmax" }
+        if name.localizedCaseInsensitiveContains("Pro") { return "airpodspro" }
+        return "airpods"
     }
-
-    var body: some View {
-        Image(systemName: symbol)
-            .font(.system(size: 13))
-            .foregroundStyle(.secondary)
-            .help(name ?? "La entrada se identifica al activar la escucha")
-            .accessibilityLabel("Entrada de audio: \(name ?? "sin identificar")")
-    }
+    return name.localizedCaseInsensitiveContains("MacBook") ? "laptopcomputer" : "mic"
 }
 
 @MainActor

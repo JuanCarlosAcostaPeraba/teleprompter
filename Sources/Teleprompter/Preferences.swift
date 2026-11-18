@@ -115,6 +115,9 @@ struct ReaderControls: View {
             }
             ColorPicker("Color de resalto", selection: $model.highlightColor, supportsOpacity: false)
             Toggle("Escuchar al abrir el lector", isOn: $model.listenOnOpen)
+            if #available(macOS 26, *) {
+                Toggle("Liquid Glass", isOn: $model.useLiquidGlass)
+            }
             Toggle("Desenfocar el fondo", isOn: $model.blurBackground)
             Toggle("Mostrar transcripción", isOn: $model.showTranscript)
             Toggle("Solicitar exclusión de captura", isOn: $model.limitCapture)

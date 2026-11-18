@@ -45,6 +45,20 @@ struct ReaderSurface: ViewModifier {
     }
 }
 
+struct ReaderChrome: ViewModifier {
+    let useLiquidGlass: Bool
+    let fallback: Color
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26, *), useLiquidGlass {
+            content
+                .glassEffect(.regular.tint(fallback.opacity(0.45)), in: .rect(cornerRadius: 12))
+        } else {
+            content.background(fallback, in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+}
+
 extension ClosedRange where Bound == Double {
     func clamp(_ value: Double) -> Double {
         Swift.min(upperBound, Swift.max(lowerBound, value))
