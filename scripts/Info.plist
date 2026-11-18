@@ -15,8 +15,8 @@
     </array>
     <key>LSUIElement</key><true/>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.7.0</string>
-    <key>CFBundleVersion</key><string>22</string>
+    <key>CFBundleShortVersionString</key><string>1.7.1</string>
+    <key>CFBundleVersion</key><string>23</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Teleprompter usa el micrófono para seguir tu posición en el guion.</string>

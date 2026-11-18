@@ -2,7 +2,13 @@
 
 Teleprompter nativo para macOS que sigue tu voz. El lector flotante se sitúa cerca de la cámara y mantiene la línea activa a la misma altura mientras lees.
 
-[English](README.md)
+[![Descargar DMG](https://img.shields.io/badge/Descargar_DMG-087C73?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest/download/Teleprompter-macOS.dmg)
+
+[![Teleprompter resalta la palabra activa mientras lees. Descarga el DMG para macOS.](docs/assets/teleprompter-banner-es.png)](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest/download/Teleprompter-macOS.dmg)
+
+[![Última versión](https://img.shields.io/github/v/release/JuanCarlosAcostaPeraba/teleprompter?style=flat-square&label=%C3%9Altima%20versi%C3%B3n&color=087C73)](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest)
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-263B50?style=flat-square&logo=apple&logoColor=white)](#descargar-e-instalar)
+· [English](README.md)
 
 ## Descargar e instalar
 
@@ -42,7 +48,7 @@ swift test
 open dist/Teleprompter.app
 ```
 
-Para empaquetar un DMG universal:
+Instala [uv](https://docs.astral.sh/uv/getting-started/installation/) para empaquetar un DMG universal con el diseño personalizado de Finder:
 
 ```sh
 ./scripts/build-app.sh --arch arm64 --arch x86_64

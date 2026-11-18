@@ -2,7 +2,13 @@
 
 A native macOS teleprompter that follows your voice. The floating reader stays near the camera and keeps the active line at a fixed height as you speak.
 
-[Español](README.es.md)
+[![Download DMG](https://img.shields.io/badge/Download_DMG-087C73?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest/download/Teleprompter-macOS.dmg)
+
+[![Teleprompter highlights the active word as you speak. Download the macOS disk image.](docs/assets/teleprompter-banner.png)](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest/download/Teleprompter-macOS.dmg)
+
+[![Latest release](https://img.shields.io/github/v/release/JuanCarlosAcostaPeraba/teleprompter?style=flat-square&label=Latest%20release&color=087C73)](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest)
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-263B50?style=flat-square&logo=apple&logoColor=white)](#download-and-install)
+· [Español](README.es.md)
 
 ## Download and install
 
@@ -42,7 +48,7 @@ swift test
 open dist/Teleprompter.app
 ```
 
-To package a universal disk image:
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) to package a universal disk image with the custom Finder layout:
 
 ```sh
 ./scripts/build-app.sh --arch arm64 --arch x86_64

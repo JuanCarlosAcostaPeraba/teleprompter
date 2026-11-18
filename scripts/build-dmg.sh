@@ -6,13 +6,12 @@ app="dist/Teleprompter.app"
 output="dist/Teleprompter-macOS.dmg"
 codesign --verify --strict "$app"
 
-staging="$(mktemp -d)"
+staging="$(mktemp -d dist/.dmg-build.XXXXXX)"
 trap 'rm -rf "$staging"' EXIT
-mkdir "$staging/volume"
-ditto "$app" "$staging/volume/Teleprompter.app"
-ln -s /Applications "$staging/volume/Applications"
 
-hdiutil create -volname Teleprompter -srcfolder "$staging/volume" -fs HFS+ \
-    -format UDZO -ov "$output"
-hdiutil verify "$output"
+image="$PWD/$staging/Teleprompter-macOS.dmg"
+uvx --from 'dmgbuild==2.0.0' dmgbuild -s scripts/dmg-layout.py \
+    -D "app=$PWD/$app" -D "assets=$PWD/scripts/assets" Teleprompter "$image"
+hdiutil verify "$image"
+mv -f "$image" "$output"
 printf '%s\n' "$PWD/$output"

@@ -19,19 +19,11 @@ struct QuickControls: View {
                 Button("Editar guion", systemImage: "square.and.pencil", action: desktop.openEditor)
             }
             Divider()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    ReaderControls(model: model)
-                    Divider()
-                    AppAccessControls(desktop: desktop)
-                    Divider()
-                    UpdateControls(updater: desktop.updater)
-                }
-            }
-            .frame(height: 390)
+            ReaderControls(model: model)
             Divider()
-            HStack {
-                Spacer()
+            AppAccessControls(desktop: desktop)
+            Divider()
+            UpdateControls(updater: desktop.updater) {
                 Button("Salir") { NSApp.terminate(nil) }
             }
         }
@@ -115,7 +107,7 @@ struct ReaderControls: View {
                 .labelStyle(.iconOnly)
                 .help("Restaurar 435 puntos y centrar debajo de la cámara")
             }
-            ColorPicker("Color de resalto", selection: $model.highlightColor, supportsOpacity: false)
+            HighlightColorControl(selection: $model.highlightColor)
             Toggle("Escuchar al abrir el lector", isOn: $model.listenOnOpen)
             if #available(macOS 26, *) {
                 Toggle("Liquid Glass", isOn: $model.useLiquidGlass)
@@ -125,5 +117,85 @@ struct ReaderControls: View {
             Toggle("Solicitar exclusión de captura", isOn: $model.limitCapture)
                 .help("Se aplica al lector. El efecto depende de la aplicación que captura.")
         }
+    }
+}
+
+private struct HighlightColorControl: View {
+    @Binding var selection: Color
+    @State private var hexInput = ""
+
+    private let swatches: [(name: String, rgb: UInt32)] = [
+        ("Menta", 0x87F2D4), ("Cielo", 0x8BD8FF), ("Lavanda", 0xC7AEFF),
+        ("Rosa", 0xFF9DB7), ("Ámbar", 0xFFD273), ("Blanco", 0xFFFFFF)
+    ]
+
+    private var selectedHex: String {
+        guard let rgb = NSColor(selection).usingColorSpace(.sRGB) else { return "" }
+        return [rgb.redComponent, rgb.greenComponent, rgb.blueComponent]
+            .map { String(format: "%02X", Int(($0 * 255).rounded())) }.joined()
+    }
+
+    private var customRGB: UInt32? {
+        let input = hexInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let digits = input.hasPrefix("#") ? String(input.dropFirst()) : input
+        guard digits.utf8.count == 6, digits.utf8.allSatisfy({
+            (48...57).contains($0) || (65...70).contains($0) || (97...102).contains($0)
+        }) else { return nil }
+        return UInt32(digits, radix: 16)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Color de resalto")
+                Spacer(minLength: 4)
+                ForEach(swatches, id: \.rgb) { swatch in
+                    let isSelected = selectedHex == String(format: "%06X", swatch.rgb)
+                    Button {
+                        select(swatch.rgb)
+                    } label: {
+                        Circle()
+                            .fill(Self.color(swatch.rgb))
+                            .overlay {
+                                Circle().strokeBorder(.primary.opacity(isSelected ? 0.85 : 0.2),
+                                                      lineWidth: isSelected ? 2 : 1)
+                            }
+                            .frame(width: 22, height: 22)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(swatch.name)
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                    .help(swatch.name)
+                }
+            }
+            HStack(spacing: 6) {
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(selection)
+                    .frame(width: 18, height: 14)
+                    .accessibilityHidden(true)
+                TextField("#\(selectedHex)", text: $hexInput)
+                    .frame(width: 88)
+                    .monospaced()
+                    .accessibilityLabel("Color hexadecimal")
+                    .help("Introduce seis dígitos hexadecimales, por ejemplo #87F2D4")
+                    .onSubmit(applyCustomColor)
+                Button("Aplicar", action: applyCustomColor)
+                    .disabled(customRGB == nil)
+            }
+        }
+    }
+
+    private static func color(_ rgb: UInt32) -> Color {
+        Color(.sRGB, red: Double((rgb >> 16) & 255) / 255,
+              green: Double((rgb >> 8) & 255) / 255, blue: Double(rgb & 255) / 255)
+    }
+
+    private func applyCustomColor() {
+        if let customRGB { select(customRGB) }
+    }
+
+    private func select(_ rgb: UInt32) {
+        selection = Self.color(rgb)
+        hexInput = ""
     }
 }

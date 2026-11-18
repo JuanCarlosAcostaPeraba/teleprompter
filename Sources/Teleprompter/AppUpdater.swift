@@ -162,8 +162,9 @@ final class AppUpdater: ObservableObject {
     }
 }
 
-struct UpdateControls: View {
+struct UpdateControls<Trailing: View>: View {
     @ObservedObject var updater: AppUpdater
+    @ViewBuilder let trailing: () -> Trailing
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -171,6 +172,8 @@ struct UpdateControls: View {
                 Button("Buscar actualizaciones", systemImage: "arrow.clockwise", action: updater.check)
                     .disabled(updater.busy)
                 if updater.busy { ProgressView().controlSize(.small) }
+                Spacer(minLength: 0)
+                trailing()
             }
             if let status = updater.status {
                 Text(status).font(.caption).foregroundStyle(.secondary)
@@ -182,5 +185,11 @@ struct UpdateControls: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+extension UpdateControls where Trailing == EmptyView {
+    init(updater: AppUpdater) {
+        self.init(updater: updater) { EmptyView() }
     }
 }
