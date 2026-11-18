@@ -59,7 +59,7 @@ final class Desktop: NSObject, NSApplicationDelegate, ObservableObject {
 
     @objc func openSettings() {
         if settings == nil {
-            settings = makeWindow(title: "Ajustes de Teleprompter", size: NSSize(width: 430, height: 440),
+            settings = makeWindow(title: "Ajustes de Teleprompter", size: NSSize(width: 430, height: 464),
                                   content: Preferences(desktop: self, model: model))
         }
         present(settings)
@@ -75,7 +75,7 @@ final class Desktop: NSObject, NSApplicationDelegate, ObservableObject {
 
     @objc private func openQuickControls() {
         if quickControls == nil {
-            quickControls = makeWindow(title: "Controles rápidos", size: NSSize(width: 345, height: 375),
+            quickControls = makeWindow(title: "Controles rápidos", size: NSSize(width: 345, height: 399),
                                        content: QuickControls(desktop: self, model: model))
         }
         present(quickControls)

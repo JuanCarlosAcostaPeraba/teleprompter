@@ -10,7 +10,7 @@ Para compilar desde el código, ejecuta `./scripts/build-app.sh` con Swift 6 o p
 
 1. Pega el guion y elige su idioma. Escribe las indicaciones de escena entre corchetes.
 2. Pulsa **Abrir lector** y coloca el panel flotante cerca de la cámara.
-3. Pulsa **Escuchar** y concede los permisos de micrófono y reconocimiento cuando macOS los solicite. Puedes seguir en modo manual si el reconocimiento local para ese idioma no está disponible.
+3. El lector empieza a escuchar al abrirse. Concede los permisos de micrófono y reconocimiento cuando macOS los solicite. Verás el nombre de la entrada junto al medidor. Puedes desactivar **Escuchar al abrir el lector** en Ajustes. Puedes seguir en modo manual si el reconocimiento local para ese idioma no está disponible.
 4. Pulsa una palabra, usa las flechas o vuelve al inicio para ajustar la posición. En **Vista** puedes cambiar el tamaño del texto y la opacidad.
 
 ## Compartir o grabar

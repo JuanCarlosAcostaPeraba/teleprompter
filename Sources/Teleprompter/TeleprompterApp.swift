@@ -12,6 +12,10 @@ final class Prompter: ObservableObject {
     @Published private(set) var error: String?
     @Published var showTranscript = false
     let microphone = MicrophoneSignal()
+    @Published private(set) var microphoneName: String?
+    @Published var listenOnOpen = UserDefaults.standard.object(forKey: "listenOnOpen") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(listenOnOpen, forKey: "listenOnOpen") }
+    }
     @Published var blurBackground = UserDefaults.standard.object(forKey: "blurBackground") as? Bool ?? true {
         didSet { UserDefaults.standard.set(blurBackground, forKey: "blurBackground") }
     }
@@ -103,6 +107,7 @@ final class Prompter: ObservableObject {
         }
         panel?.sharingType = limitCapture ? .none : .readOnly
         panel?.makeKeyAndOrderFront(nil)
+        if listenOnOpen { toggleVoice() }
         return true
     }
 
@@ -127,6 +132,7 @@ final class Prompter: ObservableObject {
                 if reset {
                     previous = ""
                     starting = false
+                    microphoneName = speech.inputName
                     listening = true
                 } else {
                     if showTranscript { transcript = text }
@@ -297,6 +303,11 @@ struct Reader: View {
                 .foregroundStyle(ink)
                 .keyboardShortcut(.space, modifiers: [])
                 MicrophoneMeter(signal: model.microphone, active: model.listening)
+                Text(model.microphoneName ?? "Entrada de audio")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .lineLimit(1).truncationMode(.tail)
+                    .help(model.microphoneName ?? "La entrada se identifica al activar la escucha")
+                    .accessibilityLabel("Entrada de audio: \(model.microphoneName ?? "sin identificar")")
                 Button("Reiniciar", systemImage: "arrow.counterclockwise") { model.seek(0) }
                     .labelStyle(.iconOnly)
                 Button("Retroceder", systemImage: "chevron.left") { model.seek(model.cursor - 8) }

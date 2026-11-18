@@ -93,6 +93,7 @@ struct ReaderControls: View {
                     .monospacedDigit().frame(width: 43, alignment: .trailing)
             }
             ColorPicker("Color de resalto", selection: $model.highlightColor, supportsOpacity: false)
+            Toggle("Escuchar al abrir el lector", isOn: $model.listenOnOpen)
             Toggle("Desenfocar el fondo", isOn: $model.blurBackground)
             Toggle("Mostrar transcripción", isOn: $model.showTranscript)
             Toggle("Solicitar exclusión de captura", isOn: $model.limitCapture)

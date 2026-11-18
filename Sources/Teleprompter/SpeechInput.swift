@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreAudio
 import Speech
 
 @MainActor
@@ -103,6 +104,43 @@ final class SpeechInput {
             guard !Task.isCancelled, let self, self.generation == current else { return }
             self.listen(recognizer, context: context, onLevel: onLevel, onText: onText, onError: onError)
         }
+    }
+
+    var inputName: String? {
+        if let unit = engine.inputNode.audioUnit {
+            var device = AudioDeviceID(kAudioObjectUnknown)
+            var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+            if AudioUnitGetProperty(unit, kAudioOutputUnitProperty_CurrentDevice,
+                                    kAudioUnitScope_Global, 0, &device, &size) == noErr,
+               let name = deviceName(device), !name.hasPrefix("CADefaultDeviceAggregate-") {
+                return name
+            }
+        }
+
+        // AVAudioEngine can wrap the default input and output in a private aggregate.
+        var property = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var device = AudioDeviceID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &property,
+                                         0, nil, &size, &device) == noErr else { return nil }
+        return deviceName(device)
+    }
+
+    private func deviceName(_ device: AudioDeviceID) -> String? {
+        guard device != kAudioObjectUnknown else { return nil }
+        var property = AudioObjectPropertyAddress(
+            mSelector: kAudioObjectPropertyName,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var name: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout.size(ofValue: name))
+        guard AudioObjectGetPropertyData(device, &property, 0, nil, &size, &name) == noErr else { return nil }
+        return name?.takeRetainedValue() as String?
     }
 
     private nonisolated static func meterLevel(_ buffer: AVAudioPCMBuffer) -> Double {
