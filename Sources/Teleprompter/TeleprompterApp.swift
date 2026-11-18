@@ -88,7 +88,6 @@ final class Prompter: ObservableObject {
             panel.title = "Lector · Teleprompter"
             panel.titleVisibility = .hidden
             panel.titlebarAppearsTransparent = true
-            panel.isMovableByWindowBackground = true
 
             panel.minSize = NSSize(width: 460, height: 200)
             panel.isReleasedWhenClosed = false
@@ -218,6 +217,32 @@ struct Editor: View {
 
 private final class ReaderPanel: NSPanel {
     override var canBecomeKey: Bool { true }
+    private var dragOffset: NSPoint?
+
+    override func sendEvent(_ event: NSEvent) {
+        let point = event.locationInWindow
+        switch event.type {
+        case .leftMouseDown:
+            if (8...40).contains(frame.height - point.y), point.x > 10, point.x < frame.width - 46 {
+                dragOffset = point
+                return
+            }
+        case .leftMouseDragged:
+            if let dragOffset {
+                let pointer = convertPoint(toScreen: point)
+                setFrameOrigin(NSPoint(x: pointer.x - dragOffset.x, y: pointer.y - dragOffset.y))
+                return
+            }
+        case .leftMouseUp:
+            if dragOffset != nil {
+                dragOffset = nil
+                return
+            }
+        default:
+            break
+        }
+        super.sendEvent(event)
+    }
 }
 
 struct Reader: View {
@@ -247,7 +272,8 @@ struct Reader: View {
                 Label("Teleprompter", systemImage: "text.alignleft")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(highlight)
-                Spacer()
+                    .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
+                    .help("Arrastra para mover el lector")
                 Button("Cerrar lector", systemImage: "xmark", action: model.closeReader)
                     .labelStyle(.iconOnly).buttonStyle(.plain)
                     .keyboardShortcut("w", modifiers: .command)
