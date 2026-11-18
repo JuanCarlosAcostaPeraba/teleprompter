@@ -23,14 +23,23 @@ final class SpeechInput {
     ) async {
         stop()
         let current = generation
-        let mic = await AVCaptureDevice.requestAccess(for: .audio)
+        let micStatus = AVCaptureDevice.authorizationStatus(for: .audio)
+        let mic: Bool
+        if micStatus == .notDetermined {
+            mic = await AVCaptureDevice.requestAccess(for: .audio)
+        } else {
+            mic = micStatus == .authorized
+        }
         guard generation == current else { return }
         guard mic else {
             onError("Activa el micrófono para Teleprompter en Ajustes del Sistema.")
             return
         }
-        let permission = await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
+        var permission = SFSpeechRecognizer.authorizationStatus()
+        if permission == .notDetermined {
+            permission = await withCheckedContinuation { continuation in
+                SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
+            }
         }
         guard generation == current else { return }
         guard permission == .authorized else {

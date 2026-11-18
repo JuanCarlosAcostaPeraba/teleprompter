@@ -17,7 +17,7 @@ struct TeleprompterApp {
 }
 
 @MainActor
-final class Desktop: NSObject, NSApplicationDelegate, ObservableObject {
+final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, ObservableObject {
     @Published var showDock = UserDefaults.standard.object(forKey: "showDock") as? Bool ?? true {
         didSet {
             UserDefaults.standard.set(showDock, forKey: "showDock")
@@ -36,6 +36,7 @@ final class Desktop: NSObject, NSApplicationDelegate, ObservableObject {
     private let popover = NSPopover()
     private var editor: NSWindow?
     private var settings: NSWindow?
+    private var preview: NSPanel?
     private var quickControls: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -43,7 +44,7 @@ final class Desktop: NSObject, NSApplicationDelegate, ObservableObject {
         installMainMenu()
         applyDockVisibility()
         applyMenuVisibility()
-        openSettings()
+        if !showDock && !showMenuBar { openSettings() }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -61,14 +62,58 @@ final class Desktop: NSObject, NSApplicationDelegate, ObservableObject {
         if settings == nil {
             settings = makeWindow(title: "Ajustes de Teleprompter", size: NSSize(width: 430, height: 464),
                                   content: Preferences(desktop: self, model: model))
+            settings?.delegate = self
+            if let screen = CameraPlacement.screen, let settings {
+                let previewBottom = CameraPlacement.position(size: CameraPlacement.previewSize, on: screen).y
+                    - CameraPlacement.previewSize.height
+                let top = previewBottom - 16
+                if top - settings.frame.height >= screen.visibleFrame.minY {
+                    settings.setFrameTopLeftPoint(NSPoint(x: screen.visibleFrame.midX - settings.frame.width / 2, y: top))
+                }
+            }
         }
         present(settings)
+        showPreview()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        if let window = notification.object as? NSWindow, window === settings {
+            preview?.orderOut(nil)
+        }
+    }
+
+    func windowDidMiniaturize(_ notification: Notification) { preview?.orderOut(nil) }
+    func windowDidDeminiaturize(_ notification: Notification) { showPreview() }
+
+    private func showPreview() {
+        guard let screen = CameraPlacement.screen else { return }
+        let size = CameraPlacement.previewSize
+        if preview == nil {
+            let panel = NSPanel(contentRect: NSRect(origin: .zero, size: size),
+                                styleMask: [.borderless, .nonactivatingPanel],
+                                backing: .buffered, defer: false)
+            panel.title = "Vista previa · Teleprompter"
+            panel.isReleasedWhenClosed = false
+            panel.isOpaque = false
+            panel.backgroundColor = .clear
+            panel.level = .floating
+            panel.hidesOnDeactivate = true
+            panel.ignoresMouseEvents = true
+            panel.sharingType = .none
+            panel.contentView = NSHostingView(rootView: ReaderPreview(model: model))
+            preview = panel
+        }
+        preview?.setFrameTopLeftPoint(CameraPlacement.position(size: size, on: screen))
+        preview?.orderFront(nil)
     }
 
     @objc func openEditor() {
         if editor == nil {
             editor = makeWindow(title: "Teleprompter", size: NSSize(width: 560, height: 410),
-                                resizable: true, content: Editor(model: model, openSettings: openSettings))
+                                resizable: true, content: Editor(model: model, openSettings: openSettings,
+                                                                 openReader: { [weak self] text in
+                                                                     self?.openScript(text)
+                                                                 }))
         }
         present(editor)
     }
@@ -87,15 +132,31 @@ final class Desktop: NSObject, NSApplicationDelegate, ObservableObject {
         quickControls?.orderOut(nil)
         NSApp.activate(ignoringOtherApps: true)
         if fromClipboard {
-            guard let text = NSPasteboard.general.string(forType: .string), model.show(text: text) else {
+            guard let text = NSPasteboard.general.string(forType: .string), openScript(text) else {
                 NSSound.beep()
                 return
             }
         } else if model.readerIsVisible {
+            hideEditorWindows()
             model.raiseReader()
-        } else if !model.show(text: defaults.string(forKey: "script") ?? "") {
+        } else if !openScript(defaults.string(forKey: "script") ?? "") {
             openEditor()
         }
+    }
+
+    @discardableResult
+    private func openScript(_ text: String) -> Bool {
+        guard model.show(text: text) else { return false }
+        hideEditorWindows()
+        return true
+    }
+
+    private func hideEditorWindows() {
+        popover.performClose(nil)
+        quickControls?.orderOut(nil)
+        preview?.orderOut(nil)
+        settings?.close()
+        editor?.close()
     }
 
     private func makeWindow<Content: View>(

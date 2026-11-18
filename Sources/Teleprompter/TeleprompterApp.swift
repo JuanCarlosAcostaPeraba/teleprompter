@@ -97,9 +97,8 @@ final class Prompter: ObservableObject {
             panel.level = .floating
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.contentView = NSHostingView(rootView: Reader(model: self))
-            if let screen = NSScreen.main {
-                let bounds = screen.visibleFrame
-                panel.setFrameTopLeftPoint(NSPoint(x: bounds.midX - 330, y: bounds.maxY - 12))
+            if !panel.setFrameUsingName("Teleprompter Reader"), let screen = CameraPlacement.screen {
+                panel.setFrameTopLeftPoint(CameraPlacement.position(size: panel.frame.size, on: screen))
             }
             panel.setFrameAutosaveName("Teleprompter Reader")
             self.panel = panel
@@ -162,6 +161,7 @@ struct Editor: View {
     @ObservedObject var model: Prompter
     @AppStorage("script") private var script = ""
     let openSettings: () -> Void
+    let openReader: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -202,7 +202,7 @@ struct Editor: View {
                     .font(.callout).foregroundStyle(.secondary)
                 Spacer()
                 Button("Abrir lector", systemImage: "play.fill") {
-                    model.show(text: script)
+                    openReader(script)
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.return, modifiers: [.command])
@@ -360,17 +360,7 @@ struct Reader: View {
             .padding(.horizontal, 14).padding(.vertical, 10)
             .background(ink.opacity(0.86))
         }
-        .background {
-            ZStack {
-                if model.blurBackground {
-                    Rectangle().fill(.ultraThinMaterial).opacity(model.opacity)
-                }
-                ink.opacity((model.blurBackground ? 0.68 : 1) * model.opacity)
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 19))
-        .overlay { RoundedRectangle(cornerRadius: 19).strokeBorder(.white.opacity(0.16)) }
-        .preferredColorScheme(.dark)
+        .modifier(ReaderSurface(blur: model.blurBackground, opacity: model.opacity))
         .onDisappear { model.pause() }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { notification in
             if let window = notification.object as? NSPanel, window.contentView is NSHostingView<Reader> {

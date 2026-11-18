@@ -27,3 +27,9 @@ Desde el icono de la barra de menús puedes abrir el lector, leer texto copiado,
 
 - **Spotlight:** busca **Teleprompter** y ábrelo para recuperar los ajustes, aunque hayas ocultado ambos iconos. Para que Spotlight lo encuentre fácilmente, coloca la app en **Aplicaciones**.
 - **Raycast:** añade [scripts/raycast](scripts/raycast) como carpeta de Script Commands y busca **Ajustes de Teleprompter**. También puedes crear un Quicklink con `teleprompter://settings`.
+
+## Arranque y permisos
+
+Al arrancar, Teleprompter se queda en el Dock, en la barra de menús o en ambos, según tus ajustes. Si ocultas ambos iconos, muestra Ajustes al arrancar. Al abrir el lector se cierran las ventanas de edición y configuración. Ajustes muestra una vista previa bajo la cámara que refleja el tamaño, el resalto, la opacidad y el desenfoque sin activar el micrófono.
+
+macOS puede volver a pedir acceso al micrófono y al reconocimiento al actualizar una compilación con firma ad hoc. Para compilaciones locales con una identidad de firma válida, usa `TELEPROMPTER_SIGN_IDENTITY` con el nombre o el hash de la identidad y conserva la misma en las siguientes compilaciones.
