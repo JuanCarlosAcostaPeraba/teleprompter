@@ -3,7 +3,13 @@ import SwiftUI
 
 @MainActor
 enum CameraPlacement {
-    static let previewSize = NSSize(width: 660, height: 204)
+    static let defaultReaderWidth = 435.0
+    static let readerWidthRange = 400.0...1200.0
+    static let previewHeight = 204.0
+
+    static func previewSize(width: Double) -> NSSize {
+        NSSize(width: width, height: previewHeight)
+    }
 
     static var screen: NSScreen? {
         NSScreen.screens.first { screen in
@@ -63,5 +69,11 @@ struct ReaderPreview: View {
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .modifier(ReaderSurface(blur: model.blurBackground, opacity: model.opacity))
+    }
+}
+
+extension ClosedRange where Bound == Double {
+    func clamp(_ value: Double) -> Double {
+        Swift.min(upperBound, Swift.max(lowerBound, value))
     }
 }

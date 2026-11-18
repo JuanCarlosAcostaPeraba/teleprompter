@@ -93,6 +93,18 @@ struct ReaderControls: View {
                 Text(model.opacity, format: .percent.precision(.fractionLength(0)))
                     .monospacedDigit().frame(width: 43, alignment: .trailing)
             }
+            HStack {
+                Text("Ancho").frame(width: 62, alignment: .leading)
+                Slider(value: $model.readerWidth, in: CameraPlacement.readerWidthRange)
+                    .labelsHidden().accessibilityLabel("Ancho del lector")
+                Text("\(Int(model.readerWidth.rounded())) pt")
+                    .monospacedDigit().frame(width: 52, alignment: .trailing)
+                Button("Restaurar ancho", systemImage: "arrow.counterclockwise") {
+                    model.readerWidth = CameraPlacement.defaultReaderWidth
+                }
+                .labelStyle(.iconOnly)
+                .help("Restaurar ancho a 435 puntos")
+            }
             ColorPicker("Color de resalto", selection: $model.highlightColor, supportsOpacity: false)
             Toggle("Escuchar al abrir el lector", isOn: $model.listenOnOpen)
             Toggle("Desenfocar el fondo", isOn: $model.blurBackground)

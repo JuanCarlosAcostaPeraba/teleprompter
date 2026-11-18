@@ -36,6 +36,25 @@ final class Prompter: ObservableObject {
         }
     }
     @Published private(set) var transcript = ""
+    @Published var readerWidth = CameraPlacement.readerWidthRange.clamp(
+        UserDefaults.standard.object(forKey: "readerWidth") as? Double ?? CameraPlacement.defaultReaderWidth
+    ) {
+        didSet {
+            UserDefaults.standard.set(readerWidth, forKey: "readerWidth")
+            if let panel, abs(panel.frame.width - readerWidth) > 0.5 {
+                var frame = panel.frame
+                frame.origin.x += (frame.width - readerWidth) / 2
+                frame.size.width = readerWidth
+                panel.setFrame(frame, display: true)
+            }
+        }
+    }
+
+    func rememberReaderWidth(_ window: NSWindow) {
+        guard window === panel, abs(window.frame.width - readerWidth) > 0.5 else { return }
+        readerWidth = window.frame.width
+    }
+
     @Published var fontSize = UserDefaults.standard.object(forKey: "fontSize") as? Double ?? 32 {
         didSet { UserDefaults.standard.set(fontSize, forKey: "fontSize") }
     }
@@ -91,7 +110,7 @@ final class Prompter: ObservableObject {
         error = nil
         if panel == nil {
             let panel = ReaderPanel(
-                contentRect: NSRect(x: 0, y: 0, width: 660, height: 320),
+                contentRect: NSRect(x: 0, y: 0, width: readerWidth, height: 320),
                 styleMask: [.borderless, .resizable],
                 backing: .buffered, defer: false
             )
@@ -99,7 +118,8 @@ final class Prompter: ObservableObject {
             panel.titleVisibility = .hidden
             panel.titlebarAppearsTransparent = true
 
-            panel.minSize = NSSize(width: 460, height: 200)
+            panel.minSize = NSSize(width: CameraPlacement.readerWidthRange.lowerBound, height: 200)
+            panel.maxSize.width = CameraPlacement.readerWidthRange.upperBound
             panel.isReleasedWhenClosed = false
             panel.hidesOnDeactivate = false
             panel.isOpaque = false
@@ -107,10 +127,16 @@ final class Prompter: ObservableObject {
             panel.level = .floating
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.contentView = NSHostingView(rootView: Reader(model: self))
-            if !panel.setFrameUsingName("Teleprompter Reader"), let screen = CameraPlacement.screen {
+            if !panel.setFrameUsingName("Teleprompter Reader Layout"), let screen = CameraPlacement.screen {
                 panel.setFrameTopLeftPoint(CameraPlacement.position(size: panel.frame.size, on: screen))
             }
-            panel.setFrameAutosaveName("Teleprompter Reader")
+            panel.setFrameAutosaveName("Teleprompter Reader Layout")
+            if abs(panel.frame.width - readerWidth) > 0.5 {
+                var frame = panel.frame
+                frame.origin.x += (frame.width - readerWidth) / 2
+                frame.size.width = readerWidth
+                panel.setFrame(frame, display: false)
+            }
             self.panel = panel
         }
         panel?.sharingType = limitCapture ? .none : .readOnly
@@ -280,8 +306,14 @@ struct Reader: View {
                 Label("Teleprompter", systemImage: "text.alignleft")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(highlight)
+                    .lineLimit(1)
                     .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
                     .help("Arrastra para mover el lector")
+                Text(model.microphoneName ?? "Entrada de audio")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .lineLimit(1).truncationMode(.tail)
+                    .help(model.microphoneName ?? "La entrada se identifica al activar la escucha")
+                    .accessibilityLabel("Entrada de audio: \(model.microphoneName ?? "sin identificar")")
                 Button("Cerrar lector", systemImage: "xmark", action: model.closeReader)
                     .labelStyle(.iconOnly).buttonStyle(.plain)
                     .keyboardShortcut("w", modifiers: .command)
@@ -332,16 +364,13 @@ struct Reader: View {
                     Label(model.listening || model.starting ? "Pausar" : "Escuchar",
                           systemImage: model.listening || model.starting ? "pause.fill" : "mic.fill")
                 }
+                .labelStyle(.iconOnly)
+                .help(model.listening || model.starting ? "Pausar" : "Escuchar")
                 .buttonStyle(.borderedProminent)
                 .tint(highlight.opacity(0.75))
                 .foregroundStyle(ink)
                 .keyboardShortcut(.space, modifiers: [])
                 MicrophoneMeter(signal: model.microphone, active: model.listening)
-                Text(model.microphoneName ?? "Entrada de audio")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .lineLimit(1).truncationMode(.tail)
-                    .help(model.microphoneName ?? "La entrada se identifica al activar la escucha")
-                    .accessibilityLabel("Entrada de audio: \(model.microphoneName ?? "sin identificar")")
                 Button("Reiniciar", systemImage: "arrow.counterclockwise") { model.seek(0) }
                     .labelStyle(.iconOnly)
                 Button("Retroceder", systemImage: "chevron.left") { model.seek(model.cursor - 8) }
@@ -372,6 +401,11 @@ struct Reader: View {
         }
         .modifier(ReaderSurface(blur: model.blurBackground, opacity: model.opacity))
         .onDisappear { model.pause() }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResizeNotification)) { notification in
+            if let window = notification.object as? NSWindow {
+                model.rememberReaderWidth(window)
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { notification in
             if let window = notification.object as? NSPanel, window.contentView is NSHostingView<Reader> {
                 model.pause()

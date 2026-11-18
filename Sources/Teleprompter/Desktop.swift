@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 @main
@@ -37,10 +38,15 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
     private var editor: NSWindow?
     private var settings: NSWindow?
     private var preview: NSPanel?
+    private var previewWidthObserver: AnyCancellable?
     private var quickControls: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model.editScript = { [weak self] in self?.openEditor() }
+        previewWidthObserver = model.$readerWidth.dropFirst().sink { [weak self] width in
+            guard let self, let preview, preview.isVisible, let screen = CameraPlacement.screen else { return }
+            resizePreview(preview, width: width, on: screen)
+        }
         installMainMenu()
         applyDockVisibility()
         applyMenuVisibility()
@@ -60,12 +66,12 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
 
     @objc func openSettings() {
         if settings == nil {
-            settings = makeWindow(title: "Ajustes de Teleprompter", size: NSSize(width: 430, height: 492),
+            settings = makeWindow(title: "Ajustes de Teleprompter", size: NSSize(width: 430, height: 525),
                                   content: Preferences(desktop: self, model: model))
             settings?.delegate = self
             if let screen = CameraPlacement.screen, let settings {
-                let previewBottom = CameraPlacement.position(size: CameraPlacement.previewSize, on: screen).y
-                    - CameraPlacement.previewSize.height
+                let previewBottom = CameraPlacement.position(size: CameraPlacement.previewSize(width: model.readerWidth), on: screen).y
+                    - CameraPlacement.previewHeight
                 let top = previewBottom - 16
                 if top - settings.frame.height >= screen.visibleFrame.minY {
                     settings.setFrameTopLeftPoint(NSPoint(x: screen.visibleFrame.midX - settings.frame.width / 2, y: top))
@@ -87,7 +93,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
 
     private func showPreview() {
         guard let screen = CameraPlacement.screen else { return }
-        let size = CameraPlacement.previewSize
+        let size = CameraPlacement.previewSize(width: model.readerWidth)
         if preview == nil {
             let panel = NSPanel(contentRect: NSRect(origin: .zero, size: size),
                                 styleMask: [.borderless, .nonactivatingPanel],
@@ -103,8 +109,17 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
             panel.contentView = NSHostingView(rootView: ReaderPreview(model: model))
             preview = panel
         }
-        preview?.setFrameTopLeftPoint(CameraPlacement.position(size: size, on: screen))
-        preview?.orderFront(nil)
+        if let preview {
+            resizePreview(preview, width: size.width, on: screen)
+            preview.orderFront(nil)
+        }
+    }
+
+    private func resizePreview(_ preview: NSPanel, width: Double, on screen: NSScreen) {
+        let size = CameraPlacement.previewSize(width: min(width, screen.visibleFrame.width))
+        let topLeft = CameraPlacement.position(size: size, on: screen)
+        preview.setFrame(NSRect(x: topLeft.x, y: topLeft.y - size.height, width: size.width, height: size.height),
+                         display: true)
     }
 
     @objc func openEditor() {
@@ -120,7 +135,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
 
     @objc private func openQuickControls() {
         if quickControls == nil {
-            quickControls = makeWindow(title: "Controles rápidos", size: NSSize(width: 345, height: 427),
+            quickControls = makeWindow(title: "Controles rápidos", size: NSSize(width: 345, height: 460),
                                        content: QuickControls(desktop: self, model: model))
         }
         present(quickControls)
