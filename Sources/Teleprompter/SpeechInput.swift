@@ -4,7 +4,10 @@ import Speech
 
 @MainActor
 final class SpeechInput {
-    private let engine = AVAudioEngine()
+    private var engine = AVAudioEngine()
+    private var configurationObserver: NSObjectProtocol?
+    private var defaultInputObserver: AudioObjectPropertyListenerBlock?
+    private var reconnect: Task<Void, Never>?
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var renewal: Task<Void, Never>?
@@ -50,6 +53,7 @@ final class SpeechInput {
         onError: @escaping (String) -> Void
     ) {
         stop()
+        engine = AVAudioEngine()
         let current = generation
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.requiresOnDeviceRecognition = true
@@ -83,6 +87,28 @@ final class SpeechInput {
             return
         }
 
+        let audioChanged: @Sendable () -> Void = { [weak self] in
+            Task { @MainActor in
+                guard let self, self.generation == current else { return }
+                self.reconnect?.cancel()
+                self.reconnect = Task { [weak self] in
+                    try? await Task.sleep(for: .milliseconds(250))
+                    guard !Task.isCancelled, let self, self.generation == current else { return }
+                    onLevel(0)
+                    self.listen(recognizer, context: context, onLevel: onLevel, onText: onText, onError: onError)
+                }
+            }
+        }
+        configurationObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
+        ) { _ in audioChanged() }
+
+        let inputObserver: AudioObjectPropertyListenerBlock = { _, _ in audioChanged() }
+        var address = Self.defaultInputAddress
+        if AudioObjectAddPropertyListenerBlock(Self.audioSystem, &address, .main, inputObserver) == noErr {
+            defaultInputObserver = inputObserver
+        }
+
         onText("", true)
         task = recognizer.recognitionTask(with: request) { [weak self] result, error in
             let transcript = result?.bestTranscription.formattedString
@@ -91,6 +117,7 @@ final class SpeechInput {
             Task { @MainActor in
                 guard let self, self.generation == current else { return }
                 if let transcript { onText(transcript, false) }
+                guard self.reconnect == nil else { return }
                 if isFinal || (failure?.domain == "kAFAssistantErrorDomain" && failure?.code == 1110) {
                     self.listen(recognizer, context: context, onLevel: onLevel, onText: onText, onError: onError)
                 } else if let failure {
@@ -118,16 +145,21 @@ final class SpeechInput {
         }
 
         // AVAudioEngine can wrap the default input and output in a private aggregate.
-        var property = AudioObjectPropertyAddress(
+        var property = Self.defaultInputAddress
+        var device = AudioDeviceID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(Self.audioSystem, &property,
+                                         0, nil, &size, &device) == noErr else { return nil }
+        return deviceName(device)
+    }
+
+    private static let audioSystem = AudioObjectID(kAudioObjectSystemObject)
+    private static var defaultInputAddress: AudioObjectPropertyAddress {
+        AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDefaultInputDevice,
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
-        var device = AudioDeviceID(kAudioObjectUnknown)
-        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
-        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &property,
-                                         0, nil, &size, &device) == noErr else { return nil }
-        return deviceName(device)
     }
 
     private func deviceName(_ device: AudioDeviceID) -> String? {
@@ -162,6 +194,17 @@ final class SpeechInput {
         generation = UUID()
         renewal?.cancel()
         renewal = nil
+        reconnect?.cancel()
+        reconnect = nil
+        if let configurationObserver {
+            NotificationCenter.default.removeObserver(configurationObserver)
+            self.configurationObserver = nil
+        }
+        if let defaultInputObserver {
+            var address = Self.defaultInputAddress
+            AudioObjectRemovePropertyListenerBlock(Self.audioSystem, &address, .main, defaultInputObserver)
+            self.defaultInputObserver = nil
+        }
         engine.stop()
         if hasTap {
             engine.inputNode.removeTap(onBus: 0)
