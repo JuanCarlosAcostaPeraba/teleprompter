@@ -4,7 +4,7 @@ import Speech
 
 @MainActor
 final class SpeechInput {
-    private var engine = AVAudioEngine()
+    private let engine = AVAudioEngine()
     private var configurationObserver: NSObjectProtocol?
     private var defaultInputObserver: AudioObjectPropertyListenerBlock?
     private var reconnect: Task<Void, Never>?
@@ -53,7 +53,6 @@ final class SpeechInput {
         onError: @escaping (String) -> Void
     ) {
         stop()
-        engine = AVAudioEngine()
         let current = generation
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.requiresOnDeviceRecognition = true
