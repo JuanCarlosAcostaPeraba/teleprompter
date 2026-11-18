@@ -78,6 +78,7 @@ final class Prompter: ObservableObject {
                 pause()
                 let offset = script.tokens.prefix { $0.wordIndex != cursor }.reduce(0) { $0 + $1.text.utf16.count }
                 script = Script(script.tokens.map(\.text).joined(), locale: locale)
+                scriptID = UUID()
                 var position = 0
                 cursor = script.tokens.prefix { token in
                     let startsBefore = position < offset
@@ -300,23 +301,7 @@ struct Reader: View {
     private let ink = Color(red: 0.06, green: 0.09, blue: 0.15)
     private var highlight: Color { model.highlightColor }
 
-    private var blocks: [[Script.Token]] {
-        var result: [[Script.Token]] = [[]]
-        var words = 0
-        for token in model.script.tokens {
-            if token.text == "\n" || token.text == "\r\n" || (words >= 14 && token.wordIndex != nil) {
-                result.append([])
-                words = 0
-                if token.text.isNewlineOnly { continue }
-            }
-            result[result.count - 1].append(token)
-            if token.wordIndex != nil { words += 1 }
-        }
-        return result
-    }
-
     var body: some View {
-        let blocks = blocks
         VStack(spacing: 0) {
             HStack {
                 Label("Teleprompter", systemImage: "text.alignleft")
@@ -335,36 +320,10 @@ struct Reader: View {
                     .keyboardShortcut("w", modifiers: .command)
             }
             .padding(.horizontal, 18).padding(.top, 12)
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 10) {
-                        ForEach(blocks.indices, id: \.self) { index in
-                            Text(styled(blocks[index]))
-                                .font(.system(size: model.fontSize, weight: .medium))
-                                .lineSpacing(5)
-                                .frame(minHeight: model.fontSize / 2, alignment: .leading)
-                                .id(index)
-                        }
-                        Color.clear.frame(height: 80).accessibilityHidden(true)
-                    }
-                    .padding(.horizontal, 24).padding(.top, 12)
-                }
-                .onChange(of: model.cursor) {
-                    let position = min(model.cursor, model.script.words.count - 1)
-                    if position == 0 {
-                        withAnimation(.easeOut(duration: 0.22)) { proxy.scrollTo(0, anchor: .top) }
-                    } else if let index = blocks.firstIndex(where: { $0.contains { $0.wordIndex == position } }) {
-                        withAnimation(.easeOut(duration: 0.22)) { proxy.scrollTo(index, anchor: .top) }
-                    }
-                }
-                .environment(\.openURL, OpenURLAction { url in
-                    guard url.scheme == "teleprompter", let position = Int(url.host ?? "") else { return .discarded }
-                    model.seek(position)
-                    return .handled
-                })
+            GeometryReader { geometry in
+                ReaderText(model: model, size: geometry.size)
             }
             .clipped()
-            .id(model.scriptID)
             if let error = model.error {
                 Text(error).font(.caption).foregroundStyle(.yellow).padding(.horizontal, 18)
             }
@@ -429,21 +388,6 @@ struct Reader: View {
         }
     }
 
-    private func styled(_ tokens: [Script.Token]) -> AttributedString {
-        var result = AttributedString()
-        for token in tokens {
-            var part = AttributedString(token.text)
-            if let index = token.wordIndex {
-                part.foregroundColor = index == model.cursor ? highlight : index < model.cursor ? .gray : .white
-                part.link = URL(string: "teleprompter://\(index)")
-                part.underlineStyle = .none
-            } else {
-                part.foregroundColor = token.text.hasPrefix("[") ? highlight.opacity(0.72) : .white
-            }
-            result += part
-        }
-        return result
-    }
 }
 
 @MainActor
@@ -468,8 +412,4 @@ private struct MicrophoneMeter: View {
         .accessibilityLabel("Nivel del micrófono")
         .accessibilityValue(active ? "\(Int(signal.level * 100)) %" : "En pausa")
     }
-}
-
-private extension String {
-    var isNewlineOnly: Bool { self == "\n" || self == "\r\n" }
 }

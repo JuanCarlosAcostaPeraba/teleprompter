@@ -7,12 +7,7 @@ struct QuickControls: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Teleprompter").font(.headline)
-                Spacer()
-                Button(action: desktop.openSettings) { Image(systemName: "gearshape") }
-                    .help("Ajustes").accessibilityLabel("Ajustes")
-            }
+            Text("Teleprompter").font(.headline)
             Button {
                 desktop.openReader()
             } label: {
@@ -21,19 +16,25 @@ struct QuickControls: View {
             .buttonStyle(.borderedProminent)
             HStack {
                 Button("Desde el portapapeles", systemImage: "clipboard") { desktop.openReader(fromClipboard: true) }
-                Button("Editar", systemImage: "square.and.pencil", action: desktop.openEditor)
+                Button("Editar guion", systemImage: "square.and.pencil", action: desktop.openEditor)
             }
             Divider()
-            ReaderControls(model: model)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    ReaderControls(model: model)
+                    Divider()
+                    AppAccessControls(desktop: desktop)
+                }
+            }
+            .frame(height: 390)
             Divider()
             HStack {
-                Button("Ajustes…", action: desktop.openSettings)
                 Spacer()
                 Button("Salir") { NSApp.terminate(nil) }
             }
         }
         .padding(15)
-        .frame(width: 345)
+        .frame(width: 370)
     }
 }
 
@@ -56,19 +57,26 @@ struct Preferences: View {
             }
             GroupBox("Lector") { ReaderControls(model: model).padding(5) }
             GroupBox("Acceso a la app") {
-                VStack(alignment: .leading, spacing: 7) {
-                    Toggle("Mostrar en el Dock", isOn: $desktop.showDock)
-                    Toggle("Mostrar en la barra de menús", isOn: $desktop.showMenuBar)
-                    Text("Abre Teleprompter desde Spotlight para volver a estos ajustes.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(5)
+                AppAccessControls(desktop: desktop).padding(5)
             }
             Spacer(minLength: 0)
         }
         .padding(20)
         .frame(width: 430)
+    }
+}
+
+private struct AppAccessControls: View {
+    @ObservedObject var desktop: Desktop
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Toggle("Mostrar en el Dock", isOn: $desktop.showDock)
+            Toggle("Mostrar en la barra de menús", isOn: $desktop.showMenuBar)
+            Text("También puedes abrir Ajustes desde Raycast o Spotlight.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

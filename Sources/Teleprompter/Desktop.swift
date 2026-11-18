@@ -18,7 +18,7 @@ struct TeleprompterApp {
 }
 
 @MainActor
-final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, ObservableObject {
+final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopoverDelegate, ObservableObject {
     @Published var showDock = UserDefaults.standard.object(forKey: "showDock") as? Bool ?? true {
         didSet {
             UserDefaults.standard.set(showDock, forKey: "showDock")
@@ -28,7 +28,11 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
     @Published var showMenuBar = UserDefaults.standard.object(forKey: "showMenuBar") as? Bool ?? true {
         didSet {
             UserDefaults.standard.set(showMenuBar, forKey: "showMenuBar")
+            let moveSettings = oldValue != showMenuBar && (popover.isShown || settings?.isVisible == true)
             applyMenuVisibility()
+            if moveSettings {
+                Task { @MainActor [weak self] in self?.openSettings() }
+            }
         }
     }
 
@@ -39,7 +43,6 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
     private var settings: NSWindow?
     private var preview: NSPanel?
     private var previewWidthObserver: AnyCancellable?
-    private var quickControls: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model.editScript = { [weak self] in self?.openEditor() }
@@ -65,6 +68,12 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
     }
 
     @objc func openSettings() {
+        if let button = statusItem?.button {
+            NSApp.activate(ignoringOtherApps: true)
+            settings?.close()
+            showMenuSettings(relativeTo: button)
+            return
+        }
         if settings == nil {
             settings = makeWindow(title: "Ajustes de Teleprompter", size: NSSize(width: 430, height: 525),
                                   content: Preferences(desktop: self, model: model))
@@ -146,21 +155,38 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
                                                                      self?.openScript(text)
                                                                  }))
         }
+        if let editor, let screen = CameraPlacement.screen {
+            placeEditor(editor, on: screen)
+        }
         present(editor)
     }
 
-    @objc private func openQuickControls() {
-        if quickControls == nil {
-            quickControls = makeWindow(title: "Controles rápidos", size: NSSize(width: 345, height: 460),
-                                       content: QuickControls(desktop: self, model: model))
+    private func placeEditor(_ editor: NSWindow, on screen: NSScreen) {
+        let bounds = screen.visibleFrame.insetBy(dx: 12, dy: 10)
+        let size = NSSize(width: model.readerWidth, height: 320)
+        let topLeft = CameraPlacement.position(size: size, on: screen)
+        let defaultReader = NSRect(x: topLeft.x, y: topLeft.y - size.height, width: size.width, height: size.height)
+        let reader = model.visibleReaderFrame.flatMap { $0.intersects(bounds) ? $0 : nil } ?? defaultReader
+        var frame = editor.frame
+        frame.origin.x = min(max(bounds.minX, reader.midX - frame.width / 2), bounds.maxX - frame.width)
+        let availableHeight = reader.minY - 12 - bounds.minY
+        if availableHeight >= editor.minSize.height {
+            frame.size.height = min(frame.height, availableHeight)
+            frame.origin.y = reader.minY - 12 - frame.height
+        } else {
+            frame.origin.y = bounds.minY
+            if reader.maxX + 12 + frame.width <= bounds.maxX {
+                frame.origin.x = reader.maxX + 12
+            } else if reader.minX - 12 - frame.width >= bounds.minX {
+                frame.origin.x = reader.minX - 12 - frame.width
+            }
         }
-        present(quickControls)
+        editor.setFrame(frame, display: false)
     }
 
     func openReader(fromClipboard: Bool = false) {
         let defaults = UserDefaults.standard
         popover.performClose(nil)
-        quickControls?.orderOut(nil)
         NSApp.activate(ignoringOtherApps: true)
         if fromClipboard {
             guard let text = NSPasteboard.general.string(forType: .string), openScript(text) else {
@@ -184,7 +210,6 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
 
     private func hideEditorWindows() {
         popover.performClose(nil)
-        quickControls?.orderOut(nil)
         preview?.orderOut(nil)
         settings?.close()
         editor?.close()
@@ -225,6 +250,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
             item.button?.action = #selector(togglePopover)
             statusItem = item
             popover.behavior = .transient
+            popover.delegate = self
             popover.contentViewController = NSHostingController(rootView: QuickControls(desktop: self, model: model))
         } else if !showMenuBar, let statusItem {
             popover.performClose(nil)
@@ -239,8 +265,23 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
         if popover.isShown {
             popover.performClose(nil)
         } else {
+            showMenuSettings(relativeTo: button)
+        }
+    }
+
+    private func showMenuSettings(relativeTo button: NSStatusBarButton) {
+        if !popover.isShown {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }
+    }
+
+    func popoverDidShow(_ notification: Notification) {
+        showPreview()
+        popover.contentViewController?.view.window?.makeKey()
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        if settings?.isVisible != true { preview?.orderOut(nil) }
     }
 
     private func menuIcon() -> NSImage {
@@ -271,7 +312,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
         preferences.target = self
         let script = application.addItem(withTitle: "Editar guion", action: #selector(openEditor), keyEquivalent: "e")
         script.target = self
-        let quick = application.addItem(withTitle: "Controles rápidos", action: #selector(openQuickControls), keyEquivalent: "k")
+        let quick = application.addItem(withTitle: "Controles rápidos", action: #selector(openSettings), keyEquivalent: "k")
         quick.target = self
         quick.keyEquivalentModifierMask = [.command, .shift]
         application.addItem(.separator())

@@ -11,7 +11,7 @@ Para compilar desde el código, ejecuta `./scripts/build-app.sh` con Swift 6 o p
 1. Pega el guion y elige su idioma. Si necesitas preparar un idioma, abre **Configurar idiomas en Dictado…** y revisa **Teclado → Dictado → Idiomas**. La disponibilidad local depende del idioma y del Mac. Escribe las indicaciones de escena entre corchetes.
 2. Pulsa **Abrir lector**. Por defecto el panel mide **435 puntos** de ancho y se centra debajo de la cámara. Puedes arrastrar sus bordes o cambiar **Ancho** en Ajustes. Teleprompter recuerda el tamaño que elijas.
 3. El lector empieza a escuchar al abrirse. Concede los permisos de micrófono y reconocimiento cuando macOS los solicite. Verás el nombre de la entrada junto al medidor. Puedes desactivar **Escuchar al abrir el lector** en Ajustes. Puedes seguir en modo manual si el reconocimiento local para ese idioma no está disponible.
-4. Pulsa una palabra, usa las flechas o vuelve al inicio para ajustar la posición. En **Vista** puedes cambiar el tamaño del texto y la opacidad.
+4. La línea activa queda cerca del borde superior, con una línea anterior visible. Pulsa una palabra, usa las flechas o vuelve al inicio para ajustar la posición. En **Vista** puedes cambiar el tamaño del texto y la opacidad.
 
 ## Compartir o grabar
 
@@ -23,7 +23,7 @@ Selecciona la ventana de la presentación o de la aplicación que vas a mostrar.
 
 ## Dock, barra de menús y accesos rápidos
 
-Desde el icono de la barra de menús puedes abrir el lector, leer texto copiado, editar el guion y cambiar el idioma, tamaño de letra, opacidad, desenfoque, color de resalto y exclusión de captura. La barra del micrófono mide la señal local mientras el lector escucha. Con Teleprompter activo también puedes abrir **Controles rápidos** con **⌘⇧K**. El texto del portapapeles se carga en el lector sin reemplazar el guion guardado. Los ajustes de Dock y barra de menús son independientes. Ocultar sus iconos no cambia la exclusión del lector al compartir pantalla.
+Desde el icono de la barra de menús puedes abrir el lector, leer texto copiado, editar el guion y cambiar el idioma, tamaño de letra, opacidad, desenfoque, color de resalto y exclusión de captura. La barra del micrófono mide la señal local mientras el lector escucha. Con Teleprompter activo también puedes abrir **Controles rápidos** con **⌘⇧K**. El texto del portapapeles se carga en el lector sin reemplazar el guion guardado. El icono de la barra de menús reúne todos los ajustes. Si desactivas el icono, Ajustes vuelve a abrirse en una ventana. Los ajustes de Dock y barra de menús son independientes. Ocultar sus iconos no cambia la exclusión del lector al compartir pantalla.
 
 - **Spotlight:** busca **Teleprompter** y ábrelo para recuperar los ajustes, aunque hayas ocultado ambos iconos. Para que Spotlight lo encuentre fácilmente, coloca la app en **Aplicaciones**.
 - **Raycast:** añade [scripts/raycast](scripts/raycast) como carpeta de Script Commands y busca **Ajustes de Teleprompter**. También puedes crear un Quicklink con `teleprompter://settings`.
