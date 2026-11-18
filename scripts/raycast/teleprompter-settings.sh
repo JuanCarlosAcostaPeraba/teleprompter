@@ -6,4 +6,4 @@
 # @raycast.packageName Teleprompter
 # @raycast.icon ⚙️
 
-exec /usr/bin/open -b local.apunte.teleprompter 'teleprompter://settings'
+exec /usr/bin/open 'teleprompter://settings'

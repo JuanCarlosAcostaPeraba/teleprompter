@@ -5,6 +5,7 @@ import SwiftUI
 @MainActor
 final class Prompter: ObservableObject {
     @Published private(set) var script = Script("")
+    @Published private(set) var scriptID = UUID()
     @Published private(set) var cursor = 0
     @Published private(set) var listening = false
     @Published private(set) var starting = false
@@ -30,6 +31,8 @@ final class Prompter: ObservableObject {
         }
     }
 
+    var editScript: () -> Void = {}
+
     var readerIsVisible: Bool { panel?.isVisible == true }
 
     func raiseReader() {
@@ -39,24 +42,31 @@ final class Prompter: ObservableObject {
     private var panel: NSPanel?
     private var previous = ""
 
-    func show(text: String) {
+    func closeReader() {
+        panel?.close()
+    }
+
+    @discardableResult
+    func show(text: String) -> Bool {
+        let newScript = Script(text)
+        guard !newScript.words.isEmpty else { return false }
         pause()
-        script = Script(text)
-        guard !script.words.isEmpty else { return }
+        script = newScript
+        scriptID = UUID()
         cursor = 0
         error = nil
         if panel == nil {
-            let panel = NSPanel(
+            let panel = ReaderPanel(
                 contentRect: NSRect(x: 0, y: 0, width: 660, height: 320),
-                styleMask: [.titled, .closable, .resizable],
+                styleMask: [.borderless, .resizable],
                 backing: .buffered, defer: false
             )
             panel.title = "Lector · Teleprompter"
             panel.titleVisibility = .hidden
             panel.titlebarAppearsTransparent = true
             panel.isMovableByWindowBackground = true
-            panel.setFrameAutosaveName("Teleprompter Reader")
-            panel.minSize = NSSize(width: 400, height: 220)
+
+            panel.minSize = NSSize(width: 460, height: 200)
             panel.isReleasedWhenClosed = false
             panel.hidesOnDeactivate = false
             panel.isOpaque = false
@@ -68,10 +78,12 @@ final class Prompter: ObservableObject {
                 let bounds = screen.visibleFrame
                 panel.setFrameTopLeftPoint(NSPoint(x: bounds.midX - 330, y: bounds.maxY - 12))
             }
+            panel.setFrameAutosaveName("Teleprompter Reader")
             self.panel = panel
         }
         panel?.sharingType = limitCapture ? .none : .readOnly
         panel?.makeKeyAndOrderFront(nil)
+        return true
     }
 
     func toggleVoice() {
@@ -175,10 +187,14 @@ struct Editor: View {
     }
 }
 
+private final class ReaderPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
 struct Reader: View {
     @ObservedObject var model: Prompter
     private let ink = Color(red: 0.06, green: 0.09, blue: 0.15)
-    private let highlight = Color(red: 0.53, green: 0.81, blue: 1)
+    private let highlight = Color(red: 0.53, green: 0.95, blue: 0.83)
 
     private var blocks: [[Script.Token]] {
         var result: [[Script.Token]] = [[]]
@@ -198,35 +214,16 @@ struct Reader: View {
     var body: some View {
         let blocks = blocks
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Button {
-                    model.toggleVoice()
-                } label: {
-                    Label(model.listening || model.starting ? "Pausar" : "Escuchar",
-                          systemImage: model.listening ? "pause.fill" : "mic.fill")
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.space, modifiers: [])
-                Button("Volver al inicio", systemImage: "backward.end") { model.seek(0) }
-                    .labelStyle(.iconOnly)
-                Button("Retroceder", systemImage: "chevron.left") { model.seek(model.cursor - 8) }
-                    .labelStyle(.iconOnly)
-                Button("Avanzar", systemImage: "chevron.right") { model.seek(model.cursor + 8) }
-                    .labelStyle(.iconOnly)
+            HStack {
+                Label("Teleprompter", systemImage: "text.alignleft")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(highlight)
                 Spacer()
-                Menu("Vista", systemImage: "textformat.size") {
-                    Toggle("Mostrar transcripción", isOn: $model.showTranscript)
-                    Button("Aumentar texto") { model.fontSize = min(72, model.fontSize + 4) }
-                    Button("Reducir texto") { model.fontSize = max(18, model.fontSize - 4) }
-                    Button("Aumentar opacidad") { model.opacity = min(1, model.opacity + 0.1) }
-                    Button("Reducir opacidad") { model.opacity = max(0.5, model.opacity - 0.1) }
-                }.fixedSize()
+                Button("Cerrar lector", systemImage: "xmark", action: model.closeReader)
+                    .labelStyle(.iconOnly).buttonStyle(.plain)
+                    .keyboardShortcut("w", modifiers: .command)
             }
-            .padding(12)
-            if let error = model.error {
-                Text(error).font(.callout).foregroundStyle(.yellow).padding(.horizontal, 18)
-            }
-            Divider()
+            .padding(.horizontal, 18).padding(.top, 12)
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 10) {
@@ -255,22 +252,61 @@ struct Reader: View {
                     return .handled
                 })
             }
+            .id(model.scriptID)
+            if let error = model.error {
+                Text(error).font(.caption).foregroundStyle(.yellow).padding(.horizontal, 18)
+            }
             if model.showTranscript && !model.transcript.isEmpty {
                 Text(model.transcript).font(.caption).lineLimit(2).truncationMode(.head)
-                    .foregroundStyle(.secondary).padding(.horizontal, 14)
+                    .foregroundStyle(.secondary).padding(.horizontal, 18).padding(.bottom, 4)
             }
-            HStack {
-                Text(model.starting ? "Activando micrófono…" : model.listening ? "Siguiendo tu voz" : "Modo manual")
-                Spacer()
-                Text("\(model.cursor) / \(model.script.words.count)").monospacedDigit()
+            Divider()
+            HStack(spacing: 8) {
+                Button {
+                    model.toggleVoice()
+                } label: {
+                    Label(model.listening || model.starting ? "Pausar" : "Escuchar",
+                          systemImage: model.listening || model.starting ? "pause.fill" : "mic.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(highlight.opacity(0.75))
+                .foregroundStyle(ink)
+                .keyboardShortcut(.space, modifiers: [])
+                Button("Reiniciar", systemImage: "arrow.counterclockwise") { model.seek(0) }
+                    .labelStyle(.iconOnly)
+                Button("Retroceder", systemImage: "chevron.left") { model.seek(model.cursor - 8) }
+                    .labelStyle(.iconOnly)
+                Button("Avanzar", systemImage: "chevron.right") { model.seek(model.cursor + 8) }
+                    .labelStyle(.iconOnly)
+                Button("Editar guion", systemImage: "square.and.pencil", action: model.editScript)
+                    .labelStyle(.iconOnly)
+                Menu("Vista", systemImage: "slider.horizontal.3") {
+                    Toggle("Mostrar transcripción", isOn: $model.showTranscript)
+                    Toggle("Solicitar exclusión de captura", isOn: $model.limitCapture)
+                    Button("Aumentar texto") { model.fontSize = min(72, model.fontSize + 4) }
+                    Button("Reducir texto") { model.fontSize = max(18, model.fontSize - 4) }
+                    Button("Aumentar opacidad") { model.opacity = min(1, model.opacity + 0.1) }
+                    Button("Reducir opacidad") { model.opacity = max(0.5, model.opacity - 0.1) }
+                }
+                .labelStyle(.iconOnly).fixedSize()
+                Spacer(minLength: 0)
+                Text("\(model.locale == "es-ES" ? "ES" : "EN")  ·  \(model.cursor)/\(model.script.words.count)")
+                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    .accessibilityLabel("\(model.listening ? "Siguiendo tu voz" : "Modo manual"), \(model.cursor) de \(model.script.words.count) palabras")
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 14).padding(.vertical, 8)
+            .controlSize(.small)
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(ink.opacity(0.42))
         }
-        .background(ink.opacity(model.opacity))
+        .background {
+            ZStack {
+                Rectangle().fill(.ultraThinMaterial).opacity(model.opacity)
+                ink.opacity(0.68 * model.opacity)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 19))
+        .overlay { RoundedRectangle(cornerRadius: 19).strokeBorder(.white.opacity(0.16)) }
         .preferredColorScheme(.dark)
-        .tint(.blue)
         .onDisappear { model.pause() }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { notification in
             if let window = notification.object as? NSPanel, window.contentView is NSHostingView<Reader> {

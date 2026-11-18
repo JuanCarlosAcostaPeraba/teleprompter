@@ -8,6 +8,10 @@ struct TeleprompterApp {
         let app = NSApplication.shared
         let desktop = Desktop()
         app.delegate = desktop
+        if let iconURL = Bundle.main.url(forResource: "Teleprompter", withExtension: "icns"),
+           let icon = NSImage(contentsOf: iconURL) {
+            app.applicationIconImage = icon
+        }
         withExtendedLifetime(desktop) { app.run() }
     }
 }
@@ -32,8 +36,10 @@ final class Desktop: NSObject, NSApplicationDelegate, ObservableObject {
     private let popover = NSPopover()
     private var editor: NSWindow?
     private var settings: NSWindow?
+    private var quickControls: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        model.editScript = { [weak self] in self?.openEditor() }
         installMainMenu()
         applyDockVisibility()
         applyMenuVisibility()
@@ -67,25 +73,27 @@ final class Desktop: NSObject, NSApplicationDelegate, ObservableObject {
         present(editor)
     }
 
+    @objc private func openQuickControls() {
+        if quickControls == nil {
+            quickControls = makeWindow(title: "Controles rápidos", size: NSSize(width: 345, height: 330),
+                                       content: QuickControls(desktop: self, model: model))
+        }
+        present(quickControls)
+    }
+
     func openReader(fromClipboard: Bool = false) {
         let defaults = UserDefaults.standard
+        popover.performClose(nil)
+        quickControls?.orderOut(nil)
+        NSApp.activate(ignoringOtherApps: true)
         if fromClipboard {
-            guard let text = NSPasteboard.general.string(forType: .string),
-                  text.contains(where: { $0.isLetter || $0.isNumber }) else {
+            guard let text = NSPasteboard.general.string(forType: .string), model.show(text: text) else {
                 NSSound.beep()
                 return
             }
-            defaults.set(text, forKey: "script")
-        }
-        popover.performClose(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        if model.readerIsVisible && !fromClipboard {
+        } else if model.readerIsVisible {
             model.raiseReader()
-        } else if let text = defaults.string(forKey: "script"),
-                  text.contains(where: { $0.isLetter || $0.isNumber }) {
-            model.show(text: text)
-            if !model.readerIsVisible { openEditor() }
-        } else {
+        } else if !model.show(text: defaults.string(forKey: "script") ?? "") {
             openEditor()
         }
     }
@@ -171,6 +179,9 @@ final class Desktop: NSObject, NSApplicationDelegate, ObservableObject {
         preferences.target = self
         let script = application.addItem(withTitle: "Editar guion", action: #selector(openEditor), keyEquivalent: "e")
         script.target = self
+        let quick = application.addItem(withTitle: "Controles rápidos", action: #selector(openQuickControls), keyEquivalent: "k")
+        quick.target = self
+        quick.keyEquivalentModifierMask = [.command, .shift]
         application.addItem(.separator())
         application.addItem(withTitle: "Salir de Teleprompter", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
