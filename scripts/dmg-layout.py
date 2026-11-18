@@ -7,9 +7,9 @@ background = str(Path(defines["assets"]) / "installer-background.png")
 
 filesystem = "HFS+"
 format = "UDZO"
-# The artwork occupies the top 360 points. Leave room for Finder bars
+# The artwork occupies the top 410 points. Leave room for Finder bars
 # that can still be visible when the user has enabled them globally.
-window_rect = ((160, 130), (640, 476))
+window_rect = ((160, 110), (640, 536))
 default_view = "icon-view"
 show_toolbar = False
 show_sidebar = False
