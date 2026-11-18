@@ -47,7 +47,7 @@ struct ReaderPreview: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(model.highlightColor)
             Group {
-                if model.locale == "es-ES" {
+                if Locale(identifier: model.locale).language.languageCode?.identifier == "es" {
                     Text("Así ").foregroundStyle(model.highlightColor) +
                     Text("se verá el guion mientras lees.").foregroundStyle(.white)
                 } else {

@@ -77,10 +77,11 @@ struct ReaderControls: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Picker("Idioma de voz", selection: $model.locale) {
-                Text("Español").tag("es-ES")
-                Text("English").tag("en-US")
-            }
+            SpeechLanguagePicker(title: "Idioma de voz", selection: $model.locale)
+            Button("Configurar idiomas en Dictado…", systemImage: "arrow.up.right.square",
+                   action: SpeechLanguage.openDictationSettings)
+                .buttonStyle(.link)
+                .help("Abre Ajustes del Sistema → Teclado → Dictado → Idiomas")
             HStack {
                 Text("Texto").frame(width: 62, alignment: .leading)
                 Slider(value: $model.fontSize, in: 18...72).labelsHidden().accessibilityLabel("Texto")

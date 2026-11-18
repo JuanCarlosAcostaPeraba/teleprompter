@@ -1,4 +1,5 @@
 import Foundation
+import NaturalLanguage
 
 public struct Script {
     public struct Token: Identifiable {
@@ -10,16 +11,46 @@ public struct Script {
     public let tokens: [Token]
     public let words: [String]
     private let positions: [String: [Int]]
+    private let locale: String?
 
-    public init(_ text: String) {
+    public init(_ text: String, locale: String? = nil) {
+        self.locale = locale
         var words: [String] = []
         var tokens: [Token] = []
+        let language = locale.map { Locale(identifier: $0) }
+        let code = language?.language.languageCode?.identifier
+        let tokenizer: NLTokenizer?
+        if let code, ["zh", "ja", "th", "lo", "km", "my"].contains(code) {
+            let wordTokenizer = NLTokenizer(unit: .word)
+            let script = language?.language.script?.identifier
+            wordTokenizer.setLanguage(NLLanguage(rawValue: code == "zh" && script == "Hant" ? "zh-Hant" : code))
+            tokenizer = wordTokenizer
+        } else {
+            tokenizer = nil
+        }
+
+        func append(_ value: String, word: Bool) {
+            tokens.append(Token(id: tokens.count, text: value, wordIndex: word ? words.count : nil))
+            if word { words.append(Self.normalize(value)) }
+        }
+
         let pattern = #/\[[^\]]*\]|[\p{L}\p{M}\p{N}]+(?:[’'][\p{L}\p{M}\p{N}]+)*|[^\p{L}\p{M}\p{N}]/#
         for match in text.matches(of: pattern) {
             let value = String(match.output)
             let isWord = value.first.map { $0.isLetter || $0.isNumber } ?? false
-            tokens.append(Token(id: tokens.count, text: value, wordIndex: isWord ? words.count : nil))
-            if isWord { words.append(Self.normalize(value)) }
+            guard isWord, let tokenizer else {
+                append(value, word: isWord)
+                continue
+            }
+            tokenizer.string = value
+            var index = value.startIndex
+            tokenizer.enumerateTokens(in: value.startIndex..<value.endIndex) { range, _ in
+                if index < range.lowerBound { append(String(value[index..<range.lowerBound]), word: true) }
+                append(String(value[range]), word: true)
+                index = range.upperBound
+                return true
+            }
+            if index < value.endIndex { append(String(value[index...]), word: true) }
         }
         self.words = words
         self.tokens = tokens
@@ -45,8 +76,8 @@ public struct Script {
     /// Uses the latest contiguous spoken phrase. A short match can advance
     /// locally; a jump needs a distinctive phrase and fresh spoken evidence.
     public func nextPosition(after cursor: Int, transcript: String, previous: String) -> Int {
-        let heard = Array(Script(transcript).words.suffix(10))
-        let old = Array(Script(previous).words.suffix(10))
+        let heard = Array(Script(transcript, locale: locale).words.suffix(10))
+        let old = Array(Script(previous, locale: locale).words.suffix(10))
         guard heard != old, let last = heard.last, let endings = positions[last] else { return cursor }
 
         var nearby: [(end: Int, length: Int)] = []

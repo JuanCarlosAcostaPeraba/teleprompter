@@ -48,7 +48,7 @@ final class SpeechInput {
         }
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: locale)),
               recognizer.supportsOnDeviceRecognition, recognizer.isAvailable else {
-            onError("El reconocimiento local no está disponible para este idioma. Puedes seguir en modo manual.")
+            onError("El reconocimiento local no está disponible para \(SpeechLanguage.name(locale)). Revisa Teclado → Dictado → Idiomas en Ajustes del Sistema. Puedes seguir en modo manual.")
             return
         }
         listen(recognizer, context: context, onLevel: onLevel, onText: onText, onError: onError)

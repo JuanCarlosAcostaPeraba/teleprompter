@@ -1,6 +1,6 @@
 # Teleprompter
 
-Teleprompter nativo para macOS 14 o posterior. Guarda el guion en este Mac y sigue lo que lees con el reconocimiento de voz local de Apple. Puedes elegir español de España o inglés de Estados Unidos.
+Teleprompter nativo para macOS 14 o posterior. Guarda el guion en este Mac y sigue lo que lees con el reconocimiento de voz local de Apple. Puedes elegir entre los idiomas y las variantes que macOS ofrece para el reconocimiento de voz.
 
 ## Abrir la aplicación
 
@@ -8,7 +8,7 @@ Descarga `Teleprompter-macOS.zip` en [Releases](https://github.com/JuanCarlosAco
 
 Para compilar desde el código, ejecuta `./scripts/build-app.sh` con Swift 6 o posterior y abre `dist/Teleprompter.app`.
 
-1. Pega el guion y elige su idioma. Escribe las indicaciones de escena entre corchetes.
+1. Pega el guion y elige su idioma. Si necesitas preparar un idioma, abre **Configurar idiomas en Dictado…** y revisa **Teclado → Dictado → Idiomas**. La disponibilidad local depende del idioma y del Mac. Escribe las indicaciones de escena entre corchetes.
 2. Pulsa **Abrir lector** y coloca el panel flotante cerca de la cámara.
 3. El lector empieza a escuchar al abrirse. Concede los permisos de micrófono y reconocimiento cuando macOS los solicite. Verás el nombre de la entrada junto al medidor. Puedes desactivar **Escuchar al abrir el lector** en Ajustes. Puedes seguir en modo manual si el reconocimiento local para ese idioma no está disponible.
 4. Pulsa una palabra, usa las flechas o vuelve al inicio para ajustar la posición. En **Vista** puedes cambiar el tamaño del texto y la opacidad.

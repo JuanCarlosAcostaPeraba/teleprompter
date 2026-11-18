@@ -52,4 +52,12 @@ final class ScriptTests: XCTestCase {
         let repeated = Script("Vamos a hablar. Pero después vuelvo a hablar.")
         XCTAssertEqual(repeated.nextPosition(after: 4, transcript: "a hablar", previous: ""), 4)
     }
+    func testJapaneseSegmentationPreservesOriginalTextAndTracksSpeech() {
+        let text = "今日はいい天気です。[間を置く] 明日も晴れです。"
+        let script = Script(text, locale: "ja-JP")
+        XCTAssertEqual(script.tokens.map(\.text).joined(), text)
+        XCTAssertGreaterThan(script.words.count, 4)
+        let transcript = "今日はいい天気です。明日も晴れです。"
+        XCTAssertEqual(script.nextPosition(after: 0, transcript: transcript, previous: ""), script.words.count)
+    }
 }

@@ -60,7 +60,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
 
     @objc func openSettings() {
         if settings == nil {
-            settings = makeWindow(title: "Ajustes de Teleprompter", size: NSSize(width: 430, height: 464),
+            settings = makeWindow(title: "Ajustes de Teleprompter", size: NSSize(width: 430, height: 492),
                                   content: Preferences(desktop: self, model: model))
             settings?.delegate = self
             if let screen = CameraPlacement.screen, let settings {
@@ -120,7 +120,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
 
     @objc private func openQuickControls() {
         if quickControls == nil {
-            quickControls = makeWindow(title: "Controles rápidos", size: NSSize(width: 345, height: 399),
+            quickControls = makeWindow(title: "Controles rápidos", size: NSSize(width: 345, height: 427),
                                        content: QuickControls(desktop: self, model: model))
         }
         present(quickControls)

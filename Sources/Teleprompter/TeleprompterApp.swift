@@ -42,10 +42,20 @@ final class Prompter: ObservableObject {
     @Published var opacity = UserDefaults.standard.object(forKey: "opacity") as? Double ?? 0.96 {
         didSet { UserDefaults.standard.set(opacity, forKey: "opacity") }
     }
-    @Published var locale = UserDefaults.standard.string(forKey: "locale") ?? "es-ES" {
+    @Published var locale = SpeechLanguage.initialSelection(UserDefaults.standard.string(forKey: "locale")) {
         didSet {
             UserDefaults.standard.set(locale, forKey: "locale")
-            if oldValue != locale { pause() }
+            if oldValue != locale {
+                pause()
+                let offset = script.tokens.prefix { $0.wordIndex != cursor }.reduce(0) { $0 + $1.text.utf16.count }
+                script = Script(script.tokens.map(\.text).joined(), locale: locale)
+                var position = 0
+                cursor = script.tokens.prefix { token in
+                    let startsBefore = position < offset
+                    position += token.text.utf16.count
+                    return startsBefore
+                }.compactMap(\.wordIndex).count
+            }
         }
     }
     @Published var limitCapture = UserDefaults.standard.object(forKey: "limitCapture") as? Bool ?? true {
@@ -72,7 +82,7 @@ final class Prompter: ObservableObject {
 
     @discardableResult
     func show(text: String) -> Bool {
-        let newScript = Script(text)
+        let newScript = Script(text, locale: locale)
         guard !newScript.words.isEmpty else { return false }
         pause()
         script = newScript
@@ -168,10 +178,8 @@ struct Editor: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Guion").font(.system(size: 29, weight: .semibold))
                 Spacer()
-                Picker("Voz", selection: $model.locale) {
-                    Text("Español").tag("es-ES")
-                    Text("English").tag("en-US")
-                }.pickerStyle(.segmented).frame(width: 170)
+                SpeechLanguagePicker(title: "Voz", selection: $model.locale)
+                    .frame(width: 220)
                 Button(action: openSettings) {
                     Image(systemName: "gearshape")
                 }
@@ -352,8 +360,10 @@ struct Reader: View {
                 }
                 .labelStyle(.iconOnly).fixedSize()
                 Spacer(minLength: 0)
-                Text("\(model.locale == "es-ES" ? "ES" : "EN")  ·  \(model.cursor)/\(model.script.words.count)")
+                Text("\(model.locale)  ·  \(model.cursor)/\(model.script.words.count)")
                     .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .help(SpeechLanguage.name(model.locale))
                     .accessibilityLabel("\(model.listening ? "Siguiendo tu voz" : "Modo manual"), \(model.cursor) de \(model.script.words.count) palabras")
             }
             .controlSize(.small)
