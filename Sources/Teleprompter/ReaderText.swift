@@ -46,6 +46,7 @@ struct ReaderText: NSViewRepresentable {
         private var renderedSize = CGSize.zero
         private var renderedCursor = -1
         private var lastAnchor: CGFloat?
+        private let lineSpacing: CGFloat = 1
         private let readColor = NSColor.white.withAlphaComponent(0.62)
 
         override init() {
@@ -60,7 +61,7 @@ struct ReaderText: NSViewRepresentable {
             textView.isSelectable = true
             textView.isRichText = true
             textView.isVerticallyResizable = false
-            textView.textContainerInset = NSSize(width: 22, height: 2)
+            textView.textContainerInset = NSSize(width: 22, height: 0)
             textView.linkTextAttributes = [:]
         }
 
@@ -77,7 +78,7 @@ struct ReaderText: NSViewRepresentable {
 
             if rebuild {
                 let paragraph = NSMutableParagraphStyle()
-                paragraph.lineSpacing = 5
+                paragraph.lineSpacing = lineSpacing
                 let base: [NSAttributedString.Key: Any] = [
                     .font: font, .foregroundColor: NSColor.white, .paragraphStyle: paragraph
                 ]
@@ -128,7 +129,7 @@ struct ReaderText: NSViewRepresentable {
             let range = ranges[min(cursor, ranges.count - 1)]
             let glyph = layout.glyphIndexForCharacter(at: range.location)
             let lineTop = layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil).minY
-            let contextHeight = layout.defaultLineHeight(for: font) + 5
+            let contextHeight = layout.defaultLineHeight(for: font) + lineSpacing
             let target = max(0, lineTop - contextHeight)
             if rebuild || resized || lastAnchor != target {
                 scroll.contentView.scroll(to: NSPoint(x: 0, y: target))
