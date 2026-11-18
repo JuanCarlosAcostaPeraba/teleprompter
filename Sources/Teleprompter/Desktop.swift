@@ -69,17 +69,29 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
             settings = makeWindow(title: "Ajustes de Teleprompter", size: NSSize(width: 430, height: 525),
                                   content: Preferences(desktop: self, model: model))
             settings?.delegate = self
-            if let screen = CameraPlacement.screen, let settings {
-                let previewBottom = CameraPlacement.position(size: CameraPlacement.previewSize(width: model.readerWidth), on: screen).y
-                    - CameraPlacement.previewHeight
-                let top = previewBottom - 16
-                if top - settings.frame.height >= screen.visibleFrame.minY {
-                    settings.setFrameTopLeftPoint(NSPoint(x: screen.visibleFrame.midX - settings.frame.width / 2, y: top))
-                }
-            }
+        }
+        if let settings, let screen = CameraPlacement.screen {
+            placeSettings(settings, on: screen)
         }
         present(settings)
         showPreview()
+    }
+
+    private func placeSettings(_ window: NSWindow, on screen: NSScreen) {
+        let bounds = screen.visibleFrame.insetBy(dx: 16, dy: 12)
+        let size = CameraPlacement.previewSize(width: model.readerWidth)
+        let topLeft = CameraPlacement.position(size: size, on: screen)
+        let previewFrame = NSRect(x: topLeft.x, y: topLeft.y - size.height, width: size.width, height: size.height)
+        let reader = model.visibleReaderFrame.flatMap { $0.intersects(bounds) ? $0 : nil } ?? previewFrame
+        let right = bounds.maxX - window.frame.width
+        let left = bounds.minX
+        let x = right >= reader.maxX + 12 || left + window.frame.width > reader.minX - 12 ? right : left
+        var frame = NSRect(x: max(left, x), y: bounds.maxY - window.frame.height,
+                           width: window.frame.width, height: window.frame.height)
+        if frame.intersects(reader), reader.minY - 12 - frame.height >= bounds.minY {
+            frame.origin.y = reader.minY - 12 - frame.height
+        }
+        window.setFrameOrigin(frame.origin)
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -92,6 +104,10 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, Observab
     func windowDidDeminiaturize(_ notification: Notification) { showPreview() }
 
     private func showPreview() {
+        guard !model.readerIsVisible else {
+            preview?.orderOut(nil)
+            return
+        }
         guard let screen = CameraPlacement.screen else { return }
         let size = CameraPlacement.previewSize(width: model.readerWidth)
         if preview == nil {

@@ -50,6 +50,16 @@ final class Prompter: ObservableObject {
         }
     }
 
+    func restoreReaderLayout() {
+        readerWidth = CameraPlacement.defaultReaderWidth
+        guard let panel, let screen = CameraPlacement.screen else {
+            NSWindow.removeFrame(usingName: Self.readerFrameName)
+            return
+        }
+        panel.setFrameTopLeftPoint(CameraPlacement.position(size: panel.frame.size, on: screen))
+        panel.saveFrame(usingName: Self.readerFrameName)
+    }
+
     func rememberReaderWidth(_ window: NSWindow) {
         guard window === panel, abs(window.frame.width - readerWidth) > 0.5 else { return }
         readerWidth = window.frame.width
@@ -86,11 +96,17 @@ final class Prompter: ObservableObject {
 
     var editScript: () -> Void = {}
 
-    var readerIsVisible: Bool { panel?.isVisible == true }
+    var visibleReaderFrame: NSRect? {
+        guard let panel, panel.isVisible else { return nil }
+        return panel.frame
+    }
+
+    var readerIsVisible: Bool { visibleReaderFrame != nil }
 
     func raiseReader() {
         panel?.makeKeyAndOrderFront(nil)
     }
+    private static let readerFrameName = "Teleprompter Reader Layout"
     private let speech = SpeechInput()
     private var panel: NSPanel?
     private var previous = ""
@@ -127,10 +143,10 @@ final class Prompter: ObservableObject {
             panel.level = .floating
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.contentView = NSHostingView(rootView: Reader(model: self))
-            if !panel.setFrameUsingName("Teleprompter Reader Layout"), let screen = CameraPlacement.screen {
+            if !panel.setFrameUsingName(Self.readerFrameName), let screen = CameraPlacement.screen {
                 panel.setFrameTopLeftPoint(CameraPlacement.position(size: panel.frame.size, on: screen))
             }
-            panel.setFrameAutosaveName("Teleprompter Reader Layout")
+            panel.setFrameAutosaveName(Self.readerFrameName)
             if abs(panel.frame.width - readerWidth) > 0.5 {
                 var frame = panel.frame
                 frame.origin.x += (frame.width - readerWidth) / 2

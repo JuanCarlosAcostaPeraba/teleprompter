@@ -100,10 +100,10 @@ struct ReaderControls: View {
                 Text("\(Int(model.readerWidth.rounded())) pt")
                     .monospacedDigit().frame(width: 52, alignment: .trailing)
                 Button("Restaurar ancho", systemImage: "arrow.counterclockwise") {
-                    model.readerWidth = CameraPlacement.defaultReaderWidth
+                    model.restoreReaderLayout()
                 }
                 .labelStyle(.iconOnly)
-                .help("Restaurar ancho a 435 puntos")
+                .help("Restaurar 435 puntos y centrar debajo de la cámara")
             }
             ColorPicker("Color de resalto", selection: $model.highlightColor, supportsOpacity: false)
             Toggle("Escuchar al abrir el lector", isOn: $model.listenOnOpen)
