@@ -20,7 +20,9 @@ Requires **macOS 14 or later**. The download supports Apple Silicon and Intel.
 2. Drag **Teleprompter** into **Applications**, then open it from Applications.
 3. Use the Teleprompter icon in the menu bar to paste or edit a script and open the reader.
 
-The public download uses ad hoc signing and is not notarized. If macOS blocks the download, you can build the app locally from the instructions below. When you first start listening, macOS may ask for microphone and speech recognition permissions.
+The public download uses ad hoc signing and is not notarized. If macOS blocks the first launch and you trust the download from this repository, close the alert and go to **System Settings → Privacy & Security → Open Anyway**. This authorizes this app on your Mac. You can also [build it from source](#build-from-source). [Apple's guide to opening apps](https://support.apple.com/en-us/102445)
+
+When you first start listening, macOS may ask for microphone and speech recognition permissions.
 
 ## Read a script
 

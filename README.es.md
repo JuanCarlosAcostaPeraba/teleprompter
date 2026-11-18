@@ -20,7 +20,9 @@ Requiere **macOS 14 o posterior**. La descarga admite Apple Silicon e Intel.
 2. Arrastra **Teleprompter** a **Aplicaciones** y ábrelo desde allí.
 3. Usa el icono de Teleprompter en la barra de menús para pegar o editar un guion y abrir el lector.
 
-La descarga pública usa firma ad hoc y carece de notarización. Si macOS bloquea la descarga, puedes compilar la app en tu Mac con las instrucciones de abajo. La primera vez que actives la escucha, macOS puede pedir permiso para acceder al micrófono y al reconocimiento de voz.
+La descarga pública usa firma ad hoc y carece de notarización. Si macOS bloquea el primer arranque y confías en la descarga de este repositorio, cierra el aviso y ve a **Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente**. Esto autoriza esta app en tu Mac. También puedes [compilarla desde el código](#compilar-desde-el-código). [Guía de Apple para abrir apps](https://support.apple.com/es-es/102445)
+
+La primera vez que actives la escucha, macOS puede pedir permiso para acceder al micrófono y al reconocimiento de voz.
 
 ## Leer un guion
 
