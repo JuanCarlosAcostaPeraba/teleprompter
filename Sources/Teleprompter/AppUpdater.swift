@@ -10,15 +10,22 @@ final class AppUpdater: ObservableObject {
     @Published private(set) var available: Release?
 
     private static let repository = "JuanCarlosAcostaPeraba/teleprompter"
-    private static let assetName = "Teleprompter-macOS.dmg"
+    private static let assetNames = ["Teleprompter.dmg", "Teleprompter-macOS.dmg"]
     private static let latestRelease = URL(string: "https://api.github.com/repos/\(repository)/releases/latest")!
     private static let releasesPage = URL(string: "https://github.com/\(repository)/releases/latest")!
 
     func check() {
+        check(automatically: false)
+    }
+
+    func checkInBackground() {
+        check(automatically: true)
+    }
+
+    private func check(automatically: Bool) {
         guard !busy else { return }
         busy = true
-        status = "Buscando actualizaciones…"
-        available = nil
+        if !automatically { status = "Buscando actualizaciones…" }
         Task {
             defer { busy = false }
             do {
@@ -33,25 +40,35 @@ final class AppUpdater: ObservableObject {
                     throw UpdateError.invalidRelease
                 }
                 if latest > current {
+                    let newlyAvailable = available?.tag != release.tag
                     available = release
-                    status = "Teleprompter \(latest) está disponible."
+                    if newlyAvailable || !automatically {
+                        status = "Teleprompter \(latest) está disponible."
+                    }
                 } else {
-                    status = "Teleprompter \(current) está al día."
+                    if available != nil || !automatically {
+                        status = "Teleprompter \(current) está al día."
+                    }
+                    available = nil
                 }
             } catch {
-                status = "No se pudo comprobar la versión: \(error.localizedDescription)"
+                if !automatically {
+                    status = "No se pudo comprobar la versión: \(error.localizedDescription)"
+                }
             }
         }
     }
 
     func download() {
         guard !busy, let release = available else { return }
-        guard let asset = release.assets.first(where: { $0.name == Self.assetName }),
+        guard let asset = Self.assetNames.lazy.compactMap({ name in
+            release.assets.first { $0.name == name }
+        }).first,
               let version = Version(release.tag),
               let expected = asset.sha256,
               let url = URL(string: asset.downloadURL),
               url.scheme == "https", url.host == "github.com",
-              url.path == "/\(Self.repository)/releases/download/\(release.tag)/\(Self.assetName)" else {
+              url.path == "/\(Self.repository)/releases/download/\(release.tag)/\(asset.name)" else {
             status = "La versión no incluye un DMG verificable. Consulta GitHub."
             NSWorkspace.shared.open(Self.releasesPage)
             return

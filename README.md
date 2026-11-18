@@ -2,9 +2,9 @@
 
 A native macOS teleprompter that follows your voice. The floating reader stays near the camera and keeps the active line at a fixed height as you speak.
 
-[![Download DMG](https://img.shields.io/badge/Download_DMG-087C73?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest/download/Teleprompter-macOS.dmg)
+[![Download DMG](https://img.shields.io/badge/Download_DMG-087C73?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest/download/Teleprompter.dmg)
 
-[![Teleprompter highlights the active word as you speak. Download the macOS disk image.](docs/assets/teleprompter-banner.png)](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest/download/Teleprompter-macOS.dmg)
+[![Teleprompter highlights the active word as you speak. Download the macOS disk image.](docs/assets/teleprompter-banner.png)](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest/download/Teleprompter.dmg)
 
 [![Latest release](https://img.shields.io/github/v/release/JuanCarlosAcostaPeraba/teleprompter?style=flat-square&label=Latest%20release&color=087C73)](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-263B50?style=flat-square&logo=apple&logoColor=white)](#download-and-install)
@@ -12,7 +12,7 @@ A native macOS teleprompter that follows your voice. The floating reader stays n
 
 ## Download and install
 
-**[Download Teleprompter for macOS (.dmg)](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest/download/Teleprompter-macOS.dmg)**
+**[Download Teleprompter for macOS (.dmg)](https://github.com/JuanCarlosAcostaPeraba/teleprompter/releases/latest/download/Teleprompter.dmg)**
 
 Requires **macOS 14 or later**. The download supports Apple Silicon and Intel.
 
@@ -32,7 +32,9 @@ The public download uses ad hoc signing and is not notarized. If macOS blocks th
 
 ## Updates
 
-Choose **Check for Updates** in Settings. The app checks the latest stable GitHub release. If a newer version is available, use **Download and Open DMG** to download and verify it without opening a browser. Quit Teleprompter, drag the new app into Applications, and replace the old version. Your script and preferences are stored separately and carry over.
+Teleprompter checks the latest stable GitHub release at startup and once a day while open. A new version appears in Settings and marks the menu bar and Dock icons when visible. You can also choose **Check for Updates** in Settings.
+
+Click **Download and Open DMG** to download and verify the installer from the app. Then quit Teleprompter and drag the new app to Applications to replace the old version.
 
 ## Screen sharing and privacy
 
@@ -55,4 +57,4 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/) to package
 ./scripts/build-dmg.sh
 ```
 
-Upload `dist/Teleprompter-macOS.dmg` to a stable GitHub release tagged `vMAJOR.MINOR.PATCH`. Keep the filename unchanged so the direct download and update checker can find it. For local development, set `TELEPROMPTER_SIGN_IDENTITY` to keep using the same signing identity across builds. Changes to an ad hoc build can cause macOS to ask for permissions again.
+The build produces `dist/Teleprompter.dmg` for local testing. See [Releasing Teleprompter](docs/releasing.md) for signing, notarization, and compatibility with older updaters. For local development, set `TELEPROMPTER_SIGN_IDENTITY` to keep using the same signing identity across builds. Changes to an ad hoc build can cause macOS to ask for permissions again.

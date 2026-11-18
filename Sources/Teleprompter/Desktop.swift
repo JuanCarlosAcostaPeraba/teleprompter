@@ -23,6 +23,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
         didSet {
             UserDefaults.standard.set(showDock, forKey: "showDock")
             applyDockVisibility()
+            updateAvailabilityIndicators(updater.available != nil)
         }
     }
     @Published var showMenuBar = UserDefaults.standard.object(forKey: "showMenuBar") as? Bool ?? true {
@@ -44,6 +45,8 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
     private var settings: NSWindow?
     private var preview: NSPanel?
     private var previewWidthObserver: AnyCancellable?
+    private var updateBadgeObserver: AnyCancellable?
+    private var updateCheckTimer: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model.editScript = { [weak self] in self?.openEditor() }
@@ -55,6 +58,13 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
         applyDockVisibility()
         applyMenuVisibility()
         if !showDock && !showMenuBar { openSettings() }
+        updateBadgeObserver = updater.$available.map { $0 != nil }.removeDuplicates().sink { [weak self] available in
+            self?.updateAvailabilityIndicators(available)
+        }
+        updateCheckTimer = Timer.publish(every: 86_400, tolerance: 60, on: .main, in: .common)
+            .autoconnect().prepend(Date()).sink { [weak self] _ in
+                self?.updater.checkInBackground()
+            }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -244,12 +254,10 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
     private func applyMenuVisibility() {
         if showMenuBar && statusItem == nil {
             let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-            item.button?.image = menuIcon()
-            item.button?.setAccessibilityLabel("Teleprompter")
-            item.button?.toolTip = "Teleprompter"
             item.button?.target = self
             item.button?.action = #selector(togglePopover)
             statusItem = item
+            updateAvailabilityIndicators(updater.available != nil)
             popover.behavior = .transient
             popover.delegate = self
             popover.contentViewController = NSHostingController(rootView: QuickControls(desktop: self, model: model))
@@ -285,8 +293,16 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
         if settings?.isVisible != true { preview?.orderOut(nil) }
     }
 
-    private func menuIcon() -> NSImage {
-        let icon = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { _ in
+    private func updateAvailabilityIndicators(_ available: Bool) {
+        NSApp.dockTile.badgeLabel = showDock && available ? "1" : nil
+        statusItem?.button?.image = menuIcon(updateAvailable: available)
+        let label = available ? "Teleprompter · Actualización disponible" : "Teleprompter"
+        statusItem?.button?.setAccessibilityLabel(label)
+        statusItem?.button?.toolTip = label
+    }
+
+    private func menuIcon(updateAvailable: Bool) -> NSImage {
+        let icon = NSImage(size: NSSize(width: 20, height: 18), flipped: true) { _ in
             NSColor.black.setStroke()
             let frame = NSBezierPath(roundedRect: NSRect(x: 1.5, y: 3, width: 15, height: 12),
                                      xRadius: 3, yRadius: 3)
@@ -296,6 +312,9 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
             for (y, width) in [(6.3, 5.0), (8.4, 9.0), (10.6, 6.0)] {
                 NSBezierPath(roundedRect: NSRect(x: 4.5, y: y, width: width, height: 1.2),
                              xRadius: 0.6, yRadius: 0.6).fill()
+            }
+            if updateAvailable {
+                NSBezierPath(ovalIn: NSRect(x: 16, y: 0.5, width: 4, height: 4)).fill()
             }
             return true
         }
