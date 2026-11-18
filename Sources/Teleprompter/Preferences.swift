@@ -82,14 +82,18 @@ struct ReaderControls: View {
                 Text("English").tag("en-US")
             }
             HStack {
-                Slider(value: $model.fontSize, in: 18...72, step: 1) { Text("Texto") }
+                Text("Texto").frame(width: 62, alignment: .leading)
+                Slider(value: $model.fontSize, in: 18...72).labelsHidden().accessibilityLabel("Texto")
                 Text("\(Int(model.fontSize)) pt").monospacedDigit().frame(width: 43, alignment: .trailing)
             }
             HStack {
-                Slider(value: $model.opacity, in: 0.5...1, step: 0.01) { Text("Opacidad") }
+                Text("Opacidad").frame(width: 62, alignment: .leading)
+                Slider(value: $model.opacity, in: 0.5...1).labelsHidden().accessibilityLabel("Opacidad")
                 Text(model.opacity, format: .percent.precision(.fractionLength(0)))
                     .monospacedDigit().frame(width: 43, alignment: .trailing)
             }
+            ColorPicker("Color de resalto", selection: $model.highlightColor, supportsOpacity: false)
+            Toggle("Desenfocar el fondo", isOn: $model.blurBackground)
             Toggle("Mostrar transcripción", isOn: $model.showTranscript)
             Toggle("Solicitar exclusión de captura", isOn: $model.limitCapture)
                 .help("Se aplica al lector. El efecto depende de la aplicación que captura.")

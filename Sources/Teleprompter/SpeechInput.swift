@@ -13,6 +13,7 @@ final class SpeechInput {
     func start(
         locale: String,
         context: @escaping () -> [String],
+        onLevel: @escaping (Double) -> Void,
         onText: @escaping (String, Bool) -> Void,
         onError: @escaping (String) -> Void
     ) async {
@@ -37,12 +38,13 @@ final class SpeechInput {
             onError("El reconocimiento local no está disponible para este idioma. Puedes seguir en modo manual.")
             return
         }
-        listen(recognizer, context: context, onText: onText, onError: onError)
+        listen(recognizer, context: context, onLevel: onLevel, onText: onText, onError: onError)
     }
 
     private func listen(
         _ recognizer: SFSpeechRecognizer,
         context: @escaping () -> [String],
+        onLevel: @escaping (Double) -> Void,
         onText: @escaping (String, Bool) -> Void,
         onError: @escaping (String) -> Void
     ) {
@@ -60,8 +62,16 @@ final class SpeechInput {
             return
         }
         self.request = request
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+        let meterInterval = max(1, AVAudioFramePosition(format.sampleRate / 20))
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, time in
             request.append(buffer)
+            let end = time.sampleTime + AVAudioFramePosition(buffer.frameLength)
+            guard time.sampleTime / meterInterval != end / meterInterval else { return }
+            let level = Self.meterLevel(buffer)
+            Task { @MainActor in
+                guard self?.generation == current else { return }
+                onLevel(level)
+            }
         }
         hasTap = true
         do {
@@ -81,7 +91,7 @@ final class SpeechInput {
                 guard let self, self.generation == current else { return }
                 if let transcript { onText(transcript, false) }
                 if isFinal || (failure?.domain == "kAFAssistantErrorDomain" && failure?.code == 1110) {
-                    self.listen(recognizer, context: context, onText: onText, onError: onError)
+                    self.listen(recognizer, context: context, onLevel: onLevel, onText: onText, onError: onError)
                 } else if let failure {
                     self.stop()
                     onError("Se interrumpió el reconocimiento. \(failure.localizedDescription)")
@@ -91,8 +101,23 @@ final class SpeechInput {
         renewal = Task { [weak self] in
             try? await Task.sleep(for: .seconds(50))
             guard !Task.isCancelled, let self, self.generation == current else { return }
-            self.listen(recognizer, context: context, onText: onText, onError: onError)
+            self.listen(recognizer, context: context, onLevel: onLevel, onText: onText, onError: onError)
         }
+    }
+
+    private nonisolated static func meterLevel(_ buffer: AVAudioPCMBuffer) -> Double {
+        guard let channels = buffer.floatChannelData, buffer.frameLength > 0 else { return 0 }
+        let frames = Int(buffer.frameLength)
+        let count = Int(buffer.format.channelCount)
+        var energy = 0.0
+        for channel in 0..<count {
+            for index in 0..<frames {
+                let sample = Double(channels[channel][index * buffer.stride])
+                energy += sample * sample
+            }
+        }
+        let decibels = 10 * log10(max(energy / Double(count * frames), 0.000001))
+        return min(1, max(0, (decibels + 60) / 60))
     }
 
     func stop() {

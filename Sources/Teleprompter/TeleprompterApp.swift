@@ -11,6 +11,26 @@ final class Prompter: ObservableObject {
     @Published private(set) var starting = false
     @Published private(set) var error: String?
     @Published var showTranscript = false
+    let microphone = MicrophoneSignal()
+    @Published var blurBackground = UserDefaults.standard.object(forKey: "blurBackground") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(blurBackground, forKey: "blurBackground") }
+    }
+    @Published private var highlightRGB: [Double] = {
+        guard let saved = UserDefaults.standard.array(forKey: "highlightRGB") as? [Double],
+              saved.count == 3, saved.allSatisfy({ (0...1).contains($0) }) else {
+            return [0.53, 0.95, 0.83]
+        }
+        return saved
+    }()
+
+    var highlightColor: Color {
+        get { Color(red: highlightRGB[0], green: highlightRGB[1], blue: highlightRGB[2]) }
+        set {
+            guard let rgb = NSColor(newValue).usingColorSpace(.sRGB) else { return }
+            highlightRGB = [rgb.redComponent, rgb.greenComponent, rgb.blueComponent]
+            UserDefaults.standard.set(highlightRGB, forKey: "highlightRGB")
+        }
+    }
     @Published private(set) var transcript = ""
     @Published var fontSize = UserDefaults.standard.object(forKey: "fontSize") as? Double ?? 32 {
         didSet { UserDefaults.standard.set(fontSize, forKey: "fontSize") }
@@ -100,6 +120,8 @@ final class Prompter: ObservableObject {
             await speech.start(locale: locale, context: { [weak self] in
                 guard let self else { return [] }
                 return script.recognitionContext(near: cursor)
+            }, onLevel: { [weak self] level in
+                self?.microphone.level = level
             }) { [weak self] text, reset in
                 guard let self else { return }
                 if reset {
@@ -122,6 +144,7 @@ final class Prompter: ObservableObject {
         speech.stop()
         starting = false
         listening = false
+        microphone.level = 0
         previous = ""
     }
 
@@ -194,7 +217,7 @@ private final class ReaderPanel: NSPanel {
 struct Reader: View {
     @ObservedObject var model: Prompter
     private let ink = Color(red: 0.06, green: 0.09, blue: 0.15)
-    private let highlight = Color(red: 0.53, green: 0.95, blue: 0.83)
+    private var highlight: Color { model.highlightColor }
 
     private var blocks: [[Script.Token]] {
         var result: [[Script.Token]] = [[]]
@@ -252,6 +275,7 @@ struct Reader: View {
                     return .handled
                 })
             }
+            .clipped()
             .id(model.scriptID)
             if let error = model.error {
                 Text(error).font(.caption).foregroundStyle(.yellow).padding(.horizontal, 18)
@@ -272,6 +296,7 @@ struct Reader: View {
                 .tint(highlight.opacity(0.75))
                 .foregroundStyle(ink)
                 .keyboardShortcut(.space, modifiers: [])
+                MicrophoneMeter(signal: model.microphone, active: model.listening)
                 Button("Reiniciar", systemImage: "arrow.counterclockwise") { model.seek(0) }
                     .labelStyle(.iconOnly)
                 Button("Retroceder", systemImage: "chevron.left") { model.seek(model.cursor - 8) }
@@ -296,12 +321,14 @@ struct Reader: View {
             }
             .controlSize(.small)
             .padding(.horizontal, 14).padding(.vertical, 10)
-            .background(ink.opacity(0.42))
+            .background(ink.opacity(0.86))
         }
         .background {
             ZStack {
-                Rectangle().fill(.ultraThinMaterial).opacity(model.opacity)
-                ink.opacity(0.68 * model.opacity)
+                if model.blurBackground {
+                    Rectangle().fill(.ultraThinMaterial).opacity(model.opacity)
+                }
+                ink.opacity((model.blurBackground ? 0.68 : 1) * model.opacity)
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 19))
@@ -329,6 +356,30 @@ struct Reader: View {
             result += part
         }
         return result
+    }
+}
+
+@MainActor
+final class MicrophoneSignal: ObservableObject {
+    @Published var level = 0.0
+}
+
+private struct MicrophoneMeter: View {
+    @ObservedObject var signal: MicrophoneSignal
+    let active: Bool
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(0..<8) { index in
+                Capsule()
+                    .fill(active && signal.level > Double(index) / 8 ? (index >= 6 ? Color.yellow : Color.mint) : .white.opacity(0.18))
+                    .frame(width: 3, height: CGFloat(6 + index * 2))
+            }
+        }
+        .frame(height: 20)
+        .help("Nivel del micrófono")
+        .accessibilityLabel("Nivel del micrófono")
+        .accessibilityValue(active ? "\(Int(signal.level * 100)) %" : "En pausa")
     }
 }
 
