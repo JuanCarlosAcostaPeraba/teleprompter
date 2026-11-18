@@ -26,6 +26,7 @@ La primera vez que actives la escucha, macOS puede pedir permiso para acceder al
 
 ## Leer un guion
 
+- Usa **Idioma de la app** en Ajustes para cambiar entre español e inglés. Teleprompter sigue las preferencias de idioma de macOS hasta que elijas un idioma.
 - Elige el idioma de reconocimiento en Ajustes. Para preparar otro idioma, pulsa **Configurar idiomas en Dictado…** y ve a **Teclado → Dictado → Idiomas** en Ajustes del Sistema. La disponibilidad local depende del idioma y del Mac.
 - Abre el lector con el guion guardado o con el texto del portapapeles. El portapapeles conserva el guion guardado y el seguimiento por voz omite las indicaciones entre corchetes.
 - El lector se abre debajo de la cámara. Arrastra sus bordes para ajustar el tamaño o haz doble clic en el tramo libre de arriba para volverlo a centrar. Ajustes muestra una vista previa.

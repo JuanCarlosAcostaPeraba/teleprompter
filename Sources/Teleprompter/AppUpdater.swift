@@ -5,7 +5,7 @@ import SwiftUI
 
 @MainActor
 final class AppUpdater: ObservableObject {
-    @Published private(set) var status: String?
+    @Published private(set) var status: LocalizedMessage?
     @Published private(set) var busy = false
     @Published private(set) var available: Release?
 
@@ -25,7 +25,7 @@ final class AppUpdater: ObservableObject {
     private func check(automatically: Bool) {
         guard !busy else { return }
         busy = true
-        if !automatically { status = "Buscando actualizaciones…" }
+        if !automatically { status = LocalizedMessage("updates.checking") }
         Task {
             defer { busy = false }
             do {
@@ -43,17 +43,17 @@ final class AppUpdater: ObservableObject {
                     let newlyAvailable = available?.tag != release.tag
                     available = release
                     if newlyAvailable || !automatically {
-                        status = "Teleprompter \(latest) está disponible."
+                        status = LocalizedMessage { $0.text("updates.available", latest.description) }
                     }
                 } else {
                     if available != nil || !automatically {
-                        status = "Teleprompter \(current) está al día."
+                        status = LocalizedMessage { $0.text("updates.upToDate", current.description) }
                     }
                     available = nil
                 }
             } catch {
                 if !automatically {
-                    status = "No se pudo comprobar la versión: \(error.localizedDescription)"
+                    status = Self.failureMessage("updates.checkFailed", error: error)
                 }
             }
         }
@@ -69,21 +69,28 @@ final class AppUpdater: ObservableObject {
               let url = URL(string: asset.downloadURL),
               url.scheme == "https", url.host == "github.com",
               url.path == "/\(Self.repository)/releases/download/\(release.tag)/\(asset.name)" else {
-            status = "La versión no incluye un DMG verificable. Consulta GitHub."
+            status = LocalizedMessage("updates.missingDMG")
             NSWorkspace.shared.open(Self.releasesPage)
             return
         }
         busy = true
-        status = "Descargando Teleprompter \(version)…"
+        status = LocalizedMessage { $0.text("updates.downloading", version.description) }
         Task {
             defer { busy = false }
             do {
                 let file = try await Self.downloadDiskImage(url: url, digest: expected, version: version)
                 guard NSWorkspace.shared.open(file) else { throw UpdateError.couldNotOpen }
-                status = "Descarga completada. Cierra Teleprompter y reemplázalo en Aplicaciones."
+                status = LocalizedMessage("updates.downloaded")
             } catch {
-                status = "No se pudo preparar el DMG: \(error.localizedDescription)"
+                status = Self.failureMessage("updates.downloadFailed", error: error)
             }
+        }
+    }
+
+    private static func failureMessage(_ key: String, error: Error) -> LocalizedMessage {
+        LocalizedMessage { language in
+            let detail = (error as? UpdateError).map { language.text($0.messageKey) } ?? error.localizedDescription
+            return language.text(key, detail)
         }
     }
 
@@ -165,21 +172,22 @@ final class AppUpdater: ObservableObject {
         var description: String { parts.map(String.init).joined(separator: ".") }
     }
 
-    enum UpdateError: LocalizedError {
+    enum UpdateError: Error {
         case invalidRelease, network, checksumMismatch, couldNotOpen
 
-        var errorDescription: String? {
+        var messageKey: String {
             switch self {
-            case .invalidRelease: "La versión publicada no se pudo interpretar."
-            case .network: "GitHub no devolvió una respuesta válida."
-            case .checksumMismatch: "La huella SHA-256 del archivo no coincide."
-            case .couldNotOpen: "macOS no pudo abrir la imagen de disco."
+            case .invalidRelease: "updates.invalidRelease"
+            case .network: "updates.network"
+            case .checksumMismatch: "updates.checksumMismatch"
+            case .couldNotOpen: "updates.couldNotOpen"
             }
         }
     }
 }
 
 struct UpdateControls<Trailing: View>: View {
+    @Environment(\.appLanguage) private var language
     @ObservedObject var updater: AppUpdater
     @ViewBuilder let trailing: () -> Trailing
 
@@ -188,7 +196,7 @@ struct UpdateControls<Trailing: View>: View {
         VStack(alignment: .leading, spacing: 7) {
             HStack {
                 Button(
-                    updateAvailable ? "Descargar" : "Buscar actualizaciones",
+                    updateAvailable ? language.text("updates.download") : language.text("updates.check"),
                     systemImage: updateAvailable ? "arrow.down.to.line" : "arrow.clockwise"
                 ) {
                     if updateAvailable {
@@ -203,7 +211,7 @@ struct UpdateControls<Trailing: View>: View {
                 trailing()
             }
             if let status = updater.status {
-                Text(status).font(.caption).foregroundStyle(.secondary)
+                Text(status.resolve(language)).font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

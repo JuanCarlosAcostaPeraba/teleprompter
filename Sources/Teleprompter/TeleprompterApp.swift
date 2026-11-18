@@ -9,7 +9,13 @@ final class Prompter: ObservableObject {
     @Published private(set) var cursor = 0
     @Published private(set) var listening = false
     @Published private(set) var starting = false
-    @Published private(set) var error: String?
+    @Published private(set) var error: LocalizedMessage?
+    @Published var interfaceLanguage = AppLanguage.initialSelection(UserDefaults.standard.string(forKey: "interfaceLanguage")) {
+        didSet {
+            UserDefaults.standard.set(interfaceLanguage.rawValue, forKey: "interfaceLanguage")
+            panel?.title = interfaceLanguage.text("reader.title")
+        }
+    }
     @Published var showTranscript = false
     let microphone = MicrophoneSignal()
     @Published private(set) var microphoneName: String?
@@ -133,7 +139,7 @@ final class Prompter: ObservableObject {
                 styleMask: [.borderless, .resizable],
                 backing: .buffered, defer: false
             )
-            panel.title = "Lector · Teleprompter"
+            panel.title = interfaceLanguage.text("reader.title")
             panel.titleVisibility = .hidden
             panel.titlebarAppearsTransparent = true
 
@@ -145,7 +151,7 @@ final class Prompter: ObservableObject {
             panel.backgroundColor = .clear
             panel.level = .floating
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-            panel.contentView = NSHostingView(rootView: Reader(model: self))
+            panel.contentView = NSHostingView(rootView: LocalizedContent(model: self, content: Reader(model: self)))
             let restored = panel.setFrameUsingName(Self.readerFrameName)
             panel.setFrameAutosaveName(Self.readerFrameName)
             let defaults = UserDefaults.standard
@@ -223,6 +229,7 @@ final class Prompter: ObservableObject {
 }
 
 struct Editor: View {
+    @Environment(\.appLanguage) private var language
     @ObservedObject var model: Prompter
     @AppStorage("script") private var script = ""
     let openSettings: () -> Void
@@ -231,15 +238,15 @@ struct Editor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Guion").font(.system(size: 29, weight: .semibold))
+                Text(language.text("script.title")).font(.system(size: 29, weight: .semibold))
                 Spacer()
-                SpeechLanguagePicker(title: "Voz", selection: $model.locale)
+                SpeechLanguagePicker(title: language.text("speech.shortLabel"), selection: $model.locale)
                     .frame(width: 220)
                 Button(action: openSettings) {
                     Image(systemName: "gearshape")
                 }
-                .help("Ajustes")
-                .accessibilityLabel("Ajustes")
+                .help(language.text("settings"))
+                .accessibilityLabel(language.text("settings"))
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -248,9 +255,9 @@ struct Editor: View {
                         .font(.system(size: 17))
                         .scrollContentBackground(.hidden)
                         .padding(10)
-                        .accessibilityLabel("Guion")
+                        .accessibilityLabel(language.text("script.title"))
                     if script.isEmpty {
-                        Text("Escribe o pega tu texto aquí…")
+                        Text(language.text("script.placeholder"))
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 16).padding(.top, 14)
                             .allowsHitTesting(false)
@@ -261,10 +268,10 @@ struct Editor: View {
             }
 
             HStack {
-                Text("Usa [corchetes] para indicaciones que no leas.")
+                Text(language.text("script.stageDirections"))
                     .font(.callout).foregroundStyle(.secondary)
                 Spacer()
-                Button("Abrir lector", systemImage: "play.fill") {
+                Button(language.text("reader.open"), systemImage: "play.fill") {
                     openReader(script)
                 }
                 .modifier(PrimaryGlassButton(enabled: model.useLiquidGlass))
@@ -321,21 +328,21 @@ private final class ReaderPanel: NSPanel {
 }
 
 struct Reader: View {
+    @Environment(\.appLanguage) private var language
     @ObservedObject var model: Prompter
     var isPreview = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var audioNotice: String?
-    private static let previewSpanish = Script("Así se verá el guion mientras lees. La línea activa se mantiene cerca de la cámara.", locale: "es-ES")
-    private static let previewEnglish = Script("This is how your script will look as you read. The active line stays close to the camera.", locale: "en-US")
+    private static let previewSpanish = Script(AppLanguage.spanish.text("reader.previewScript"), locale: "es-ES")
+    private static let previewEnglish = Script(AppLanguage.english.text("reader.previewScript"), locale: "en-US")
     private static let previewSpanishID = UUID()
     private static let previewEnglishID = UUID()
 
-    private var spanish: Bool { Locale(identifier: model.locale).language.languageCode?.identifier == "es" }
     private var shownScript: Script {
-        isPreview ? (spanish ? Self.previewSpanish : Self.previewEnglish) : model.script
+        isPreview ? (language == .spanish ? Self.previewSpanish : Self.previewEnglish) : model.script
     }
     private var shownScriptID: UUID {
-        isPreview ? (spanish ? Self.previewSpanishID : Self.previewEnglishID) : model.scriptID
+        isPreview ? (language == .spanish ? Self.previewSpanishID : Self.previewEnglishID) : model.scriptID
     }
     private var shownCursor: Int { isPreview ? 0 : model.cursor }
     private let ink = Color(red: 0.06, green: 0.09, blue: 0.15)
@@ -346,14 +353,14 @@ struct Reader: View {
             Color.clear
                 .frame(height: CameraPlacement.readerHeaderHeight)
                 .contentShape(Rectangle())
-                .help("Arrastra para mover el lector. Doble clic para centrarlo bajo la cámara.")
+                .help(language.text("reader.dragHelp"))
             GeometryReader { geometry in
                 ReaderText(model: model, size: geometry.size, script: shownScript, scriptID: shownScriptID,
                            cursor: shownCursor, allowsSeeking: !isPreview)
             }
             .clipped()
             if !isPreview, let error = model.error {
-                Text(error).font(.caption).foregroundStyle(.yellow).padding(.horizontal, 18)
+                Text(error.resolve(language)).font(.caption).foregroundStyle(.yellow).padding(.horizontal, 18)
             }
             if !isPreview, model.showTranscript && !model.transcript.isEmpty {
                 Text(model.transcript).font(.caption).lineLimit(2).truncationMode(.head)
@@ -372,38 +379,41 @@ struct Reader: View {
                         }
                     }
                 }
-                .accessibilityLabel(active ? "Pausar" : "Escuchar")
-                .accessibilityValue(audioName ?? "Entrada sin identificar")
-                .help((active ? "Pausar" : "Escuchar") + (audioName.map { " · " + $0 } ?? ""))
+                .accessibilityLabel(language.text(active ? "reader.pause" : "reader.listen"))
+                .accessibilityValue(audioName ?? language.text("audio.unknown"))
+                .help(language.text(active ? "reader.pause" : "reader.listen") + (audioName.map { " · " + $0 } ?? ""))
                 .foregroundStyle(highlight)
                 .keyboardShortcut(.space, modifiers: [])
                 MicrophoneMeter(signal: model.microphone, active: model.listening)
-                Button("Reiniciar", systemImage: "arrow.counterclockwise") { model.seek(0) }
+                Button(language.text("reader.reset"), systemImage: "arrow.counterclockwise") { model.seek(0) }
                     .labelStyle(.iconOnly)
-                Button("Retroceder", systemImage: "chevron.left") { model.seek(model.cursor - 8) }
+                Button(language.text("reader.back"), systemImage: "chevron.left") { model.seek(model.cursor - 8) }
                     .labelStyle(.iconOnly)
-                Button("Avanzar", systemImage: "chevron.right") { model.seek(model.cursor + 8) }
+                Button(language.text("reader.forward"), systemImage: "chevron.right") { model.seek(model.cursor + 8) }
                     .labelStyle(.iconOnly)
-                Button("Editar guion", systemImage: "square.and.pencil", action: model.editScript)
+                Button(language.text("script.edit"), systemImage: "square.and.pencil", action: model.editScript)
                     .labelStyle(.iconOnly)
-                Menu("Vista", systemImage: "slider.horizontal.3") {
-                    Toggle("Mostrar transcripción", isOn: $model.showTranscript)
-                    Toggle("Solicitar exclusión de captura", isOn: $model.limitCapture)
-                    Button("Aumentar texto") { model.fontSize = min(72, model.fontSize + 4) }
-                    Button("Reducir texto") { model.fontSize = max(18, model.fontSize - 4) }
-                    Button("Aumentar opacidad") { model.opacity = min(1, model.opacity + 0.1) }
-                    Button("Reducir opacidad") { model.opacity = max(0.5, model.opacity - 0.1) }
+                Menu(language.text("reader.view"), systemImage: "slider.horizontal.3") {
+                    Toggle(language.text("reader.showTranscript"), isOn: $model.showTranscript)
+                    Toggle(language.text("reader.limitCapture"), isOn: $model.limitCapture)
+                    Button(language.text("reader.increaseText")) { model.fontSize = min(72, model.fontSize + 4) }
+                    Button(language.text("reader.decreaseText")) { model.fontSize = max(18, model.fontSize - 4) }
+                    Button(language.text("reader.increaseOpacity")) { model.opacity = min(1, model.opacity + 0.1) }
+                    Button(language.text("reader.decreaseOpacity")) { model.opacity = max(0.5, model.opacity - 0.1) }
                 }
                 .labelStyle(.iconOnly).fixedSize()
                 Spacer(minLength: 0)
                 Text("\(model.locale)  ·  \(shownCursor)/\(shownScript.words.count)")
                     .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .help(SpeechLanguage.name(model.locale))
-                    .accessibilityLabel("\(model.listening ? "Siguiendo tu voz" : "Modo manual"), \(shownCursor) de \(shownScript.words.count) palabras")
-                Button("Cerrar lector", systemImage: "xmark", action: model.closeReader)
+                    .help(SpeechLanguage.name(model.locale, in: language.locale))
+                    .accessibilityLabel(language.text(
+                        "reader.progress", language.text(model.listening ? "reader.following" : "reader.manual"),
+                        shownCursor, shownScript.words.count
+                    ))
+                Button(language.text("reader.close"), systemImage: "xmark", action: model.closeReader)
                     .labelStyle(.iconOnly)
-                    .help("Cerrar lector")
+                    .help(language.text("reader.close"))
                     .keyboardShortcut("w", modifiers: .command)
             }
             .controlSize(.small)
@@ -469,6 +479,7 @@ final class MicrophoneSignal: ObservableObject {
 }
 
 private struct MicrophoneMeter: View {
+    @Environment(\.appLanguage) private var language
     @ObservedObject var signal: MicrophoneSignal
     let active: Bool
 
@@ -481,8 +492,8 @@ private struct MicrophoneMeter: View {
             }
         }
         .frame(height: 20)
-        .help("Nivel del micrófono")
-        .accessibilityLabel("Nivel del micrófono")
-        .accessibilityValue(active ? "\(Int(signal.level * 100)) %" : "En pausa")
+        .help(language.text("audio.level"))
+        .accessibilityLabel(language.text("audio.level"))
+        .accessibilityValue(active ? "\(Int(signal.level * 100)) %" : language.text("audio.paused"))
     }
 }

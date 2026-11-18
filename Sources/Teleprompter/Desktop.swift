@@ -40,6 +40,8 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
     let model = Prompter()
     let updater = AppUpdater()
     private var statusItem: NSStatusItem?
+    private var language: AppLanguage { model.interfaceLanguage }
+    private var languageObserver: AnyCancellable?
     private let popover = NSPopover()
     private var editor: NSWindow?
     private var settings: NSWindow?
@@ -54,7 +56,13 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
             guard let self, let preview, preview.isVisible, let screen = CameraPlacement.screen else { return }
             resizePreview(preview, width: width, on: screen)
         }
-        installMainMenu()
+        languageObserver = model.$interfaceLanguage.removeDuplicates().sink { [weak self] language in
+            guard let self else { return }
+            settings?.title = language.text("settings.title")
+            preview?.title = language.text("reader.previewTitle")
+            installMainMenu(language: language)
+            updateAvailabilityIndicators(updater.available != nil, language: language)
+        }
         applyDockVisibility()
         applyMenuVisibility()
         if !showDock && !showMenuBar { openSettings() }
@@ -86,7 +94,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
             return
         }
         if settings == nil {
-            settings = makeWindow(title: "Ajustes de Teleprompter", size: NSSize(width: 430, height: 628),
+            settings = makeWindow(title: language.text("settings.title"), size: NSSize(width: 430, height: 660),
                                   content: Preferences(desktop: self, model: model))
             settings?.delegate = self
         }
@@ -134,7 +142,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
             let panel = NSPanel(contentRect: NSRect(origin: .zero, size: size),
                                 styleMask: [.borderless, .nonactivatingPanel],
                                 backing: .buffered, defer: false)
-            panel.title = "Vista previa · Teleprompter"
+            panel.title = language.text("reader.previewTitle")
             panel.isReleasedWhenClosed = false
             panel.isOpaque = false
             panel.backgroundColor = .clear
@@ -142,7 +150,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
             panel.hidesOnDeactivate = true
             panel.ignoresMouseEvents = true
             panel.sharingType = .none
-            panel.contentView = NSHostingView(rootView: Reader(model: model, isPreview: true))
+            panel.contentView = NSHostingView(rootView: LocalizedContent(model: model, content: Reader(model: model, isPreview: true)))
             preview = panel
         }
         if let preview {
@@ -236,7 +244,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
         window.title = title
         window.isReleasedWhenClosed = false
         if resizable { window.minSize = NSSize(width: 480, height: 350) }
-        window.contentView = NSHostingView(rootView: content)
+        window.contentView = NSHostingView(rootView: LocalizedContent(model: model, content: content))
         window.center()
         return window
     }
@@ -260,7 +268,9 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
             updateAvailabilityIndicators(updater.available != nil)
             popover.behavior = .transient
             popover.delegate = self
-            popover.contentViewController = NSHostingController(rootView: QuickControls(desktop: self, model: model))
+            popover.contentViewController = NSHostingController(rootView: LocalizedContent(
+                model: model, content: QuickControls(desktop: self, model: model)
+            ))
         } else if !showMenuBar, let statusItem {
             popover.performClose(nil)
             NSStatusBar.system.removeStatusItem(statusItem)
@@ -293,10 +303,11 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
         if settings?.isVisible != true { preview?.orderOut(nil) }
     }
 
-    private func updateAvailabilityIndicators(_ available: Bool) {
+    private func updateAvailabilityIndicators(_ available: Bool, language: AppLanguage? = nil) {
+        let language = language ?? self.language
         NSApp.dockTile.badgeLabel = showDock && available ? "1" : nil
         statusItem?.button?.image = menuIcon(updateAvailable: available)
-        let label = available ? "Teleprompter · Actualización disponible" : "Teleprompter"
+        let label = available ? language.text("updates.badge") : "Teleprompter"
         statusItem?.button?.setAccessibilityLabel(label)
         statusItem?.button?.toolTip = label
     }
@@ -322,32 +333,32 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
         return icon
     }
 
-    private func installMainMenu() {
+    private func installMainMenu(language: AppLanguage) {
         let main = NSMenu()
         let applicationItem = NSMenuItem()
         main.addItem(applicationItem)
         let application = NSMenu(title: "Teleprompter")
         applicationItem.submenu = application
-        let preferences = application.addItem(withTitle: "Ajustes…", action: #selector(openSettings), keyEquivalent: ",")
+        let preferences = application.addItem(withTitle: language.text("settings.menu"), action: #selector(openSettings), keyEquivalent: ",")
         preferences.target = self
-        let script = application.addItem(withTitle: "Editar guion", action: #selector(openEditor), keyEquivalent: "e")
+        let script = application.addItem(withTitle: language.text("script.edit"), action: #selector(openEditor), keyEquivalent: "e")
         script.target = self
-        let quick = application.addItem(withTitle: "Controles rápidos", action: #selector(openSettings), keyEquivalent: "k")
+        let quick = application.addItem(withTitle: language.text("settings.quickControls"), action: #selector(openSettings), keyEquivalent: "k")
         quick.target = self
         quick.keyEquivalentModifierMask = [.command, .shift]
         application.addItem(.separator())
-        application.addItem(withTitle: "Salir de Teleprompter", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        application.addItem(withTitle: language.text("menu.quitApp"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
         let editItem = NSMenuItem()
         main.addItem(editItem)
-        let edit = NSMenu(title: "Edición")
+        let edit = NSMenu(title: language.text("menu.edit"))
         editItem.submenu = edit
-        edit.addItem(withTitle: "Deshacer", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: language.text("menu.undo"), action: Selector(("undo:")), keyEquivalent: "z")
         edit.addItem(.separator())
-        edit.addItem(withTitle: "Cortar", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        edit.addItem(withTitle: "Copiar", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        edit.addItem(withTitle: "Pegar", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        edit.addItem(withTitle: "Seleccionar todo", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        edit.addItem(withTitle: language.text("menu.cut"), action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: language.text("menu.copy"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: language.text("menu.paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: language.text("menu.selectAll"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         NSApp.mainMenu = main
     }
 }

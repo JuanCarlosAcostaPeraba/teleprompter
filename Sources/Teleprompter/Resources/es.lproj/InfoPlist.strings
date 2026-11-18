@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "Teleprompter usa el micrófono para seguir tu posición en el guion.";
+"NSSpeechRecognitionUsageDescription" = "Teleprompter reconoce lo que lees para desplazar el guion.";

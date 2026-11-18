@@ -26,6 +26,7 @@ When you first start listening, macOS may ask for microphone and speech recognit
 
 ## Read a script
 
+- Use **App Language** in Settings to switch between English and Spanish. Teleprompter uses your macOS language preferences until you choose a language.
 - Choose a speech recognition language in Settings. To prepare additional languages, open **Configure Dictation Languages**, then go to **Keyboard → Dictation → Languages** in System Settings. On-device availability varies by language and Mac.
 - Open the reader from a saved script or directly from the clipboard. Clipboard text does not replace the saved script. Stage directions in square brackets are skipped by voice tracking.
 - The reader opens below the camera. Drag its edges to resize it, or double-click the free strip at the top to put it back in position. Settings includes a live preview.

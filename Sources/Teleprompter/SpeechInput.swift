@@ -19,7 +19,7 @@ final class SpeechInput {
         context: @escaping () -> [String],
         onLevel: @escaping (Double) -> Void,
         onText: @escaping (String, Bool) -> Void,
-        onError: @escaping (String) -> Void
+        onError: @escaping (LocalizedMessage) -> Void
     ) async {
         stop()
         let current = generation
@@ -32,7 +32,7 @@ final class SpeechInput {
         }
         guard generation == current else { return }
         guard mic else {
-            onError("Activa el micrófono para Teleprompter en Ajustes del Sistema.")
+            onError(LocalizedMessage("audio.permission"))
             return
         }
         var permission = SFSpeechRecognizer.authorizationStatus()
@@ -43,12 +43,14 @@ final class SpeechInput {
         }
         guard generation == current else { return }
         guard permission == .authorized else {
-            onError("Activa el reconocimiento de voz para Teleprompter en Ajustes del Sistema.")
+            onError(LocalizedMessage("speech.permission"))
             return
         }
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: locale)),
               recognizer.supportsOnDeviceRecognition, recognizer.isAvailable else {
-            onError("El reconocimiento local no está disponible para \(SpeechLanguage.name(locale)). Revisa Teclado → Dictado → Idiomas en Ajustes del Sistema. Puedes seguir en modo manual.")
+            onError(LocalizedMessage { language in
+                language.text("speech.unavailable", SpeechLanguage.name(locale, in: language.locale))
+            })
             return
         }
         listen(recognizer, context: context, onLevel: onLevel, onText: onText, onError: onError)
@@ -59,7 +61,7 @@ final class SpeechInput {
         context: @escaping () -> [String],
         onLevel: @escaping (Double) -> Void,
         onText: @escaping (String, Bool) -> Void,
-        onError: @escaping (String) -> Void
+        onError: @escaping (LocalizedMessage) -> Void
     ) {
         stop()
         let current = generation
@@ -71,7 +73,7 @@ final class SpeechInput {
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else {
-            onError("No se encontró una entrada de audio activa.")
+            onError(LocalizedMessage("audio.noInput"))
             return
         }
         self.request = request
@@ -91,7 +93,7 @@ final class SpeechInput {
             try engine.start()
         } catch {
             stop()
-            onError("No se pudo iniciar el micrófono. \(error.localizedDescription)")
+            onError(LocalizedMessage { $0.text("audio.startFailed", error.localizedDescription) })
             return
         }
 
@@ -130,7 +132,7 @@ final class SpeechInput {
                     self.listen(recognizer, context: context, onLevel: onLevel, onText: onText, onError: onError)
                 } else if let failure {
                     self.stop()
-                    onError("Se interrumpió el reconocimiento. \(failure.localizedDescription)")
+                    onError(LocalizedMessage { $0.text("speech.interrupted", failure.localizedDescription) })
                 }
             }
         }

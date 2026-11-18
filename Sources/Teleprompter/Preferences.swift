@@ -2,21 +2,23 @@ import AppKit
 import SwiftUI
 
 struct QuickControls: View {
+    @Environment(\.appLanguage) private var language
     @ObservedObject var desktop: Desktop
     @ObservedObject var model: Prompter
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Teleprompter").font(.headline)
+            AppLanguagePicker(selection: $model.interfaceLanguage)
             Button {
                 desktop.openReader()
             } label: {
-                Label("Abrir lector", systemImage: "play.fill").frame(maxWidth: .infinity)
+                Label(language.text("reader.open"), systemImage: "play.fill").frame(maxWidth: .infinity)
             }
             .modifier(PrimaryGlassButton(enabled: model.useLiquidGlass))
             HStack {
-                Button("Desde el portapapeles", systemImage: "clipboard") { desktop.openReader(fromClipboard: true) }
-                Button("Editar guion", systemImage: "square.and.pencil", action: desktop.openEditor)
+                Button(language.text("reader.fromClipboard"), systemImage: "clipboard") { desktop.openReader(fromClipboard: true) }
+                Button(language.text("script.edit"), systemImage: "square.and.pencil", action: desktop.openEditor)
             }
             Divider()
             ReaderControls(model: model)
@@ -24,7 +26,7 @@ struct QuickControls: View {
             AppAccessControls(desktop: desktop)
             Divider()
             UpdateControls(updater: desktop.updater) {
-                Button("Salir") { NSApp.terminate(nil) }
+                Button(language.text("menu.quit")) { NSApp.terminate(nil) }
             }
         }
         .padding(15)
@@ -34,6 +36,7 @@ struct QuickControls: View {
 }
 
 struct Preferences: View {
+    @Environment(\.appLanguage) private var language
     @ObservedObject var desktop: Desktop
     @ObservedObject var model: Prompter
 
@@ -45,16 +48,17 @@ struct Preferences: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Teleprompter").font(.title2.weight(.semibold))
-                    Text("Ajustes").foregroundStyle(.secondary)
+                    Text(language.text("settings")).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Editar guion", action: desktop.openEditor)
+                Button(language.text("script.edit"), action: desktop.openEditor)
             }
-            GroupBox("Lector") { ReaderControls(model: model).padding(5) }
-            GroupBox("Acceso a la app") {
+            AppLanguagePicker(selection: $model.interfaceLanguage)
+            GroupBox(language.text("reader.settings")) { ReaderControls(model: model).padding(5) }
+            GroupBox(language.text("settings.appAccess")) {
                 AppAccessControls(desktop: desktop).padding(5)
             }
-            GroupBox("Actualizaciones") { UpdateControls(updater: desktop.updater).padding(5) }
+            GroupBox(language.text("updates.title")) { UpdateControls(updater: desktop.updater).padding(5) }
             Spacer(minLength: 0)
         }
         .padding(20)
@@ -64,69 +68,86 @@ struct Preferences: View {
 }
 
 private struct AppAccessControls: View {
+    @Environment(\.appLanguage) private var language
     @ObservedObject var desktop: Desktop
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Toggle("Mostrar en el Dock", isOn: $desktop.showDock)
-            Toggle("Mostrar en la barra de menús", isOn: $desktop.showMenuBar)
+            Toggle(language.text("settings.showDock"), isOn: $desktop.showDock)
+            Toggle(language.text("settings.showMenuBar"), isOn: $desktop.showMenuBar)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 struct ReaderControls: View {
+    @Environment(\.appLanguage) private var language
     @ObservedObject var model: Prompter
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SpeechLanguagePicker(title: "Idioma de voz", selection: $model.locale)
-            Button("Configurar idiomas en Dictado…", systemImage: "arrow.up.right.square",
+            SpeechLanguagePicker(title: language.text("speech.language"), selection: $model.locale)
+            Button(language.text("speech.configure"), systemImage: "arrow.up.right.square",
                    action: SpeechLanguage.openDictationSettings)
-                .help("Abre Ajustes del Sistema → Teclado → Dictado → Idiomas")
+                .help(language.text("speech.configureHelp"))
             HStack {
-                Text("Texto").frame(width: 62, alignment: .leading)
-                Slider(value: $model.fontSize, in: 18...72).labelsHidden().accessibilityLabel("Texto")
+                Text(language.text("reader.textSize")).frame(width: 62, alignment: .leading)
+                Slider(value: $model.fontSize, in: 18...72).labelsHidden().accessibilityLabel(language.text("reader.textSize"))
                 Text("\(Int(model.fontSize)) pt").monospacedDigit().frame(width: 43, alignment: .trailing)
             }
             HStack {
-                Text("Opacidad").frame(width: 62, alignment: .leading)
-                Slider(value: $model.opacity, in: 0.5...1).labelsHidden().accessibilityLabel("Opacidad")
+                Text(language.text("reader.opacity")).frame(width: 62, alignment: .leading)
+                Slider(value: $model.opacity, in: 0.5...1).labelsHidden().accessibilityLabel(language.text("reader.opacity"))
                 Text(model.opacity, format: .percent.precision(.fractionLength(0)))
                     .monospacedDigit().frame(width: 43, alignment: .trailing)
             }
             HStack {
-                Text("Ancho").frame(width: 62, alignment: .leading)
+                Text(language.text("reader.width")).frame(width: 62, alignment: .leading)
                 Slider(value: $model.readerWidth, in: CameraPlacement.readerWidthRange)
-                    .labelsHidden().accessibilityLabel("Ancho del lector")
+                    .labelsHidden().accessibilityLabel(language.text("reader.widthAccessibility"))
                 Text("\(Int(model.readerWidth.rounded())) pt")
                     .monospacedDigit().frame(width: 52, alignment: .trailing)
-                Button("Restaurar ancho", systemImage: "arrow.counterclockwise") {
+                Button(language.text("reader.resetWidth"), systemImage: "arrow.counterclockwise") {
                     model.restoreReaderLayout()
                 }
                 .labelStyle(.iconOnly)
-                .help("Restaurar 435 puntos y centrar debajo de la cámara")
+                .help(language.text("reader.resetWidthHelp"))
             }
             HighlightColorControl(selection: $model.highlightColor)
-            Toggle("Escuchar al abrir el lector", isOn: $model.listenOnOpen)
+            Toggle(language.text("reader.listenOnOpen"), isOn: $model.listenOnOpen)
             if #available(macOS 26, *) {
                 Toggle("Liquid Glass", isOn: $model.useLiquidGlass)
             }
-            Toggle("Desenfocar el fondo", isOn: $model.blurBackground)
-            Toggle("Mostrar transcripción", isOn: $model.showTranscript)
-            Toggle("Solicitar exclusión de captura", isOn: $model.limitCapture)
-                .help("Se aplica al lector. El efecto depende de la aplicación que captura.")
+            Toggle(language.text("reader.blur"), isOn: $model.blurBackground)
+            Toggle(language.text("reader.showTranscript"), isOn: $model.showTranscript)
+            Toggle(language.text("reader.limitCapture"), isOn: $model.limitCapture)
+                .help(language.text("reader.limitCaptureHelp"))
         }
     }
 }
 
+private struct AppLanguagePicker: View {
+    @Environment(\.appLanguage) private var language
+    @Binding var selection: AppLanguage
+
+    var body: some View {
+        Picker(language.text("settings.interfaceLanguage"), selection: $selection) {
+            ForEach(AppLanguage.allCases) { option in
+                Text(option.name).tag(option)
+            }
+        }
+        .pickerStyle(.menu)
+    }
+}
+
 private struct HighlightColorControl: View {
+    @Environment(\.appLanguage) private var language
     @Binding var selection: Color
     @State private var hexInput = ""
 
-    private let swatches: [(name: String, rgb: UInt32)] = [
-        ("Menta", 0x87F2D4), ("Cielo", 0x8BD8FF), ("Lavanda", 0xC7AEFF),
-        ("Rosa", 0xFF9DB7), ("Ámbar", 0xFFD273), ("Blanco", 0xFFFFFF)
+    private let swatches: [(nameKey: String, rgb: UInt32)] = [
+        ("color.mint", 0x87F2D4), ("color.sky", 0x8BD8FF), ("color.lavender", 0xC7AEFF),
+        ("color.pink", 0xFF9DB7), ("color.amber", 0xFFD273), ("color.white", 0xFFFFFF)
     ]
 
     private var selectedHex: String {
@@ -147,7 +168,7 @@ private struct HighlightColorControl: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Color de resalto")
+                Text(language.text("reader.highlight"))
                 Spacer(minLength: 4)
                 ForEach(swatches, id: \.rgb) { swatch in
                     let isSelected = selectedHex == String(format: "%06X", swatch.rgb)
@@ -163,9 +184,9 @@ private struct HighlightColorControl: View {
                             .frame(width: 22, height: 22)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(swatch.name)
+                    .accessibilityLabel(language.text(swatch.nameKey))
                     .accessibilityAddTraits(isSelected ? .isSelected : [])
-                    .help(swatch.name)
+                    .help(language.text(swatch.nameKey))
                 }
             }
             HStack(spacing: 6) {
@@ -176,10 +197,10 @@ private struct HighlightColorControl: View {
                 TextField("#\(selectedHex)", text: $hexInput)
                     .frame(width: 88)
                     .monospaced()
-                    .accessibilityLabel("Color hexadecimal")
-                    .help("Introduce seis dígitos hexadecimales, por ejemplo #87F2D4")
+                    .accessibilityLabel(language.text("reader.hex"))
+                    .help(language.text("reader.hexHelp"))
                     .onSubmit(applyCustomColor)
-                Button("Aplicar", action: applyCustomColor)
+                Button(language.text("reader.apply"), action: applyCustomColor)
                     .disabled(customRGB == nil)
             }
         }

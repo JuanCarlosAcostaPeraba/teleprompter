@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "Teleprompter uses the microphone to follow your position in the script.";
+"NSSpeechRecognitionUsageDescription" = "Teleprompter recognizes what you read to scroll the script.";

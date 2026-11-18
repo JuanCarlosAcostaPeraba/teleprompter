@@ -5,6 +5,7 @@
     <key>CFBundleExecutable</key><string>Teleprompter</string>
     <key>CFBundleIdentifier</key><string>local.apunte.teleprompter</string>
     <key>CFBundleName</key><string>Teleprompter</string>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
     <key>CFBundleIconFile</key><string>Teleprompter.icns</string>
     <key>CFBundleURLTypes</key>
     <array>
@@ -15,12 +16,12 @@
     </array>
     <key>LSUIElement</key><true/>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.7.3</string>
-    <key>CFBundleVersion</key><string>25</string>
+    <key>CFBundleShortVersionString</key><string>1.8.0</string>
+    <key>CFBundleVersion</key><string>26</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Teleprompter usa el micrófono para seguir tu posición en el guion.</string>
+    <string>Teleprompter uses the microphone to follow your position in the script.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Teleprompter reconoce lo que lees para desplazar el guion.</string>
+    <string>Teleprompter recognizes what you read to scroll the script.</string>
 </dict>
 </plist>
