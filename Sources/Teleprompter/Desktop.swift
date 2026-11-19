@@ -39,6 +39,11 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
 
     let model = Prompter()
     let updater = AppUpdater()
+    @Published var settingsSection: SettingsSection = .reader {
+        didSet {
+            if popover.isShown || settings?.isVisible == true { showPreview() }
+        }
+    }
     private var statusItem: NSStatusItem?
     private var language: AppLanguage { model.interfaceLanguage }
     private var languageObserver: AnyCancellable?
@@ -94,7 +99,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
             return
         }
         if settings == nil {
-            settings = makeWindow(title: language.text("settings.title"), size: NSSize(width: 430, height: 660),
+            settings = makeWindow(title: language.text("settings.title"), size: NSSize(width: 460, height: 550),
                                   content: Preferences(desktop: self, model: model))
             settings?.delegate = self
         }
@@ -132,7 +137,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
     func windowDidDeminiaturize(_ notification: Notification) { showPreview() }
 
     private func showPreview() {
-        guard !model.readerIsVisible else {
+        guard settingsSection == .reader, !model.readerIsVisible else {
             preview?.orderOut(nil)
             return
         }
@@ -269,7 +274,7 @@ final class Desktop: NSObject, NSApplicationDelegate, NSWindowDelegate, NSPopove
             popover.behavior = .transient
             popover.delegate = self
             popover.contentViewController = NSHostingController(rootView: LocalizedContent(
-                model: model, content: QuickControls(desktop: self, model: model)
+                model: model, content: Preferences(desktop: self, model: model, compact: true)
             ))
         } else if !showMenuBar, let statusItem {
             popover.performClose(nil)

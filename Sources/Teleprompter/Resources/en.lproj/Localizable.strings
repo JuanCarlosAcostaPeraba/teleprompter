@@ -60,6 +60,9 @@
 "script.title" = "Script";
 "settings" = "Settings";
 "settings.appAccess" = "App Access";
+"settings.appSection" = "App";
+"settings.appearance" = "Appearance";
+"settings.effects" = "Background & Effects";
 "settings.interfaceLanguage" = "App Language";
 "settings.menu" = "Settings…";
 "settings.quickControls" = "Quick Controls";

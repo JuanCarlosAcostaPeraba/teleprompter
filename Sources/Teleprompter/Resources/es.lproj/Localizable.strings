@@ -60,6 +60,9 @@
 "script.title" = "Guion";
 "settings" = "Ajustes";
 "settings.appAccess" = "Acceso a la app";
+"settings.appSection" = "App";
+"settings.appearance" = "Aspecto";
+"settings.effects" = "Fondo y efectos";
 "settings.interfaceLanguage" = "Idioma de la app";
 "settings.menu" = "Ajustes…";
 "settings.quickControls" = "Controles rápidos";

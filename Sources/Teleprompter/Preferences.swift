@@ -1,37 +1,23 @@
 import AppKit
 import SwiftUI
 
-struct QuickControls: View {
-    @Environment(\.appLanguage) private var language
-    @ObservedObject var desktop: Desktop
-    @ObservedObject var model: Prompter
+enum SettingsSection: String, CaseIterable {
+    case reader, voice, app
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Teleprompter").font(.headline)
-            AppLanguagePicker(selection: $model.interfaceLanguage)
-            Button {
-                desktop.openReader()
-            } label: {
-                Label(language.text("reader.open"), systemImage: "play.fill").frame(maxWidth: .infinity)
-            }
-            .modifier(PrimaryGlassButton(enabled: model.useLiquidGlass))
-            HStack {
-                Button(language.text("reader.fromClipboard"), systemImage: "clipboard") { desktop.openReader(fromClipboard: true) }
-                Button(language.text("script.edit"), systemImage: "square.and.pencil", action: desktop.openEditor)
-            }
-            Divider()
-            ReaderControls(model: model)
-            Divider()
-            AppAccessControls(desktop: desktop)
-            Divider()
-            UpdateControls(updater: desktop.updater) {
-                Button(language.text("menu.quit")) { NSApp.terminate(nil) }
-            }
+    var titleKey: String {
+        switch self {
+        case .reader: "reader.settings"
+        case .voice: "speech.shortLabel"
+        case .app: "settings.appSection"
         }
-        .padding(15)
-        .frame(width: 370)
-        .modifier(GlassControls(enabled: model.useLiquidGlass))
+    }
+
+    var icon: String {
+        switch self {
+        case .reader: "text.alignleft"
+        case .voice: "waveform"
+        case .app: "gearshape"
+        }
     }
 }
 
@@ -39,90 +25,204 @@ struct Preferences: View {
     @Environment(\.appLanguage) private var language
     @ObservedObject var desktop: Desktop
     @ObservedObject var model: Prompter
+    var compact = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .center) {
-                Image(nsImage: NSApp.applicationIconImage)
-                    .resizable().frame(width: 44, height: 44)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Teleprompter").font(.title2.weight(.semibold))
-                    Text(language.text("settings")).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 15) {
+            header
+            sectionPicker
+            if compact {
+                sectionContents
+            } else {
+                ScrollView { sectionContents }
+            }
+            Divider()
+            UpdateControls(updater: desktop.updater) {
+                if compact {
+                    Button(language.text("menu.quit")) { NSApp.terminate(nil) }
                 }
-                Spacer()
-                Button(language.text("script.edit"), action: desktop.openEditor)
             }
-            AppLanguagePicker(selection: $model.interfaceLanguage)
-            GroupBox(language.text("reader.settings")) { ReaderControls(model: model).padding(5) }
-            GroupBox(language.text("settings.appAccess")) {
-                AppAccessControls(desktop: desktop).padding(5)
-            }
-            GroupBox(language.text("updates.title")) { UpdateControls(updater: desktop.updater).padding(5) }
-            Spacer(minLength: 0)
         }
-        .padding(20)
-        .frame(width: 430)
+        .padding(compact ? 16 : 20)
+        .frame(width: compact ? 382 : 460)
         .modifier(GlassControls(enabled: model.useLiquidGlass))
     }
-}
 
-private struct AppAccessControls: View {
-    @Environment(\.appLanguage) private var language
-    @ObservedObject var desktop: Desktop
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 34, height: 34)
+                    .accessibilityHidden(true)
+                Text("Teleprompter")
+                    .font(.title3.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+            }
+            HStack(spacing: 8) {
+                Button {
+                    desktop.openReader()
+                } label: {
+                    Label(language.text("reader.open"), systemImage: "play.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .modifier(PrimaryGlassButton(enabled: model.useLiquidGlass))
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Toggle(language.text("settings.showDock"), isOn: $desktop.showDock)
-            Toggle(language.text("settings.showMenuBar"), isOn: $desktop.showMenuBar)
+                Button(language.text("reader.fromClipboard"), systemImage: "clipboard") {
+                    desktop.openReader(fromClipboard: true)
+                }
+                .labelStyle(.iconOnly)
+                .help(language.text("reader.fromClipboard"))
+
+                Button(language.text("script.edit"), systemImage: "square.and.pencil", action: desktop.openEditor)
+                    .labelStyle(.iconOnly)
+                    .help(language.text("script.edit"))
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background {
+            RoundedRectangle(cornerRadius: 14)
+                .fill(.teal.opacity(0.09))
+        }
+    }
+
+    private var sectionPicker: some View {
+        HStack(spacing: 4) {
+            ForEach(SettingsSection.allCases, id: \.self) { section in
+                let selected = desktop.settingsSection == section
+                Button {
+                    desktop.settingsSection = section
+                } label: {
+                    Label(language.text(section.titleKey), systemImage: section.icon)
+                        .font(.callout.weight(selected ? .semibold : .regular))
+                        .foregroundStyle(selected ? .primary : .secondary)
+                        .frame(maxWidth: .infinity, minHeight: 32)
+                        .background(.teal.opacity(selected ? 0.16 : 0), in: RoundedRectangle(cornerRadius: 8))
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .padding(4)
+        .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    @ViewBuilder
+    private var sectionContents: some View {
+        switch desktop.settingsSection {
+        case .reader:
+            VStack(spacing: 12) {
+                SettingsCard(title: language.text("settings.appearance")) {
+                    readerSliders
+                    Divider()
+                    HighlightColorControl(selection: $model.highlightColor)
+                }
+                SettingsCard {
+                    DisclosureGroup(language.text("settings.effects")) {
+                        VStack(spacing: 10) {
+                            settingToggle(language.text("reader.blur"), isOn: $model.blurBackground)
+                            if #available(macOS 26, *) {
+                                settingToggle("Liquid Glass", isOn: $model.useLiquidGlass)
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
+                }
+            }
+        case .voice:
+            VStack(spacing: 12) {
+                SettingsCard {
+                    SpeechLanguagePicker(title: language.text("speech.language"), selection: $model.locale)
+                    Button(language.text("speech.configure"), systemImage: "arrow.up.right.square",
+                           action: SpeechLanguage.openDictationSettings)
+                        .buttonStyle(.link)
+                        .help(language.text("speech.configureHelp"))
+                }
+                SettingsCard {
+                    settingToggle(language.text("reader.listenOnOpen"), isOn: $model.listenOnOpen)
+                    settingToggle(language.text("reader.showTranscript"), isOn: $model.showTranscript)
+                }
+            }
+        case .app:
+            VStack(spacing: 12) {
+                SettingsCard {
+                    AppLanguagePicker(selection: $model.interfaceLanguage)
+                    Divider()
+                    settingToggle(language.text("settings.showDock"), isOn: $desktop.showDock)
+                    settingToggle(language.text("settings.showMenuBar"), isOn: $desktop.showMenuBar)
+                }
+                SettingsCard {
+                    settingToggle(language.text("reader.limitCapture"), isOn: $model.limitCapture)
+                        .help(language.text("reader.limitCaptureHelp"))
+                }
+            }
+        }
+    }
+
+    private var readerSliders: some View {
+        VStack(spacing: 9) {
+            slider("reader.textSize", value: $model.fontSize, in: 18...72, displayValue: "\(Int(model.fontSize)) pt")
+            slider("reader.opacity", value: $model.opacity, in: 0.5...1,
+                   displayValue: model.opacity.formatted(.percent.precision(.fractionLength(0)).locale(language.locale)))
+            slider("reader.width", value: $model.readerWidth, in: CameraPlacement.readerWidthRange,
+                   displayValue: "\(Int(model.readerWidth.rounded())) pt", reset: model.restoreReaderLayout)
+        }
+    }
+
+    private func slider(_ labelKey: String, value: Binding<Double>, in range: ClosedRange<Double>,
+                        displayValue: String, reset: (() -> Void)? = nil) -> some View {
+        let label = language.text(labelKey)
+        return HStack(spacing: 8) {
+            Text(label).frame(width: 61, alignment: .leading)
+            Slider(value: value, in: range)
+                .labelsHidden()
+                .accessibilityLabel(reset == nil ? label : language.text("reader.widthAccessibility"))
+                .tint(.teal)
+            Text(displayValue)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(width: 50, alignment: .trailing)
+            Color.clear
+                .frame(width: 24, height: 24)
+                .overlay {
+                    if let reset {
+                        Button(language.text("reader.resetWidth"), systemImage: "arrow.counterclockwise", action: reset)
+                            .labelStyle(.iconOnly)
+                            .buttonStyle(.borderless)
+                            .foregroundStyle(.secondary)
+                            .help(language.text("reader.resetWidthHelp"))
+                    }
+                }
+        }
+    }
+
+    private func settingToggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            Text(title)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .toggleStyle(.switch)
+        .tint(.teal)
     }
 }
 
-struct ReaderControls: View {
-    @Environment(\.appLanguage) private var language
-    @ObservedObject var model: Prompter
+private struct SettingsCard<Content: View>: View {
+    var title: String? = nil
+    @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SpeechLanguagePicker(title: language.text("speech.language"), selection: $model.locale)
-            Button(language.text("speech.configure"), systemImage: "arrow.up.right.square",
-                   action: SpeechLanguage.openDictationSettings)
-                .help(language.text("speech.configureHelp"))
-            HStack {
-                Text(language.text("reader.textSize")).frame(width: 62, alignment: .leading)
-                Slider(value: $model.fontSize, in: 18...72).labelsHidden().accessibilityLabel(language.text("reader.textSize"))
-                Text("\(Int(model.fontSize)) pt").monospacedDigit().frame(width: 43, alignment: .trailing)
+        VStack(alignment: .leading, spacing: 10) {
+            if let title {
+                Text(title)
+                    .font(.callout.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
             }
-            HStack {
-                Text(language.text("reader.opacity")).frame(width: 62, alignment: .leading)
-                Slider(value: $model.opacity, in: 0.5...1).labelsHidden().accessibilityLabel(language.text("reader.opacity"))
-                Text(model.opacity, format: .percent.precision(.fractionLength(0)))
-                    .monospacedDigit().frame(width: 43, alignment: .trailing)
-            }
-            HStack {
-                Text(language.text("reader.width")).frame(width: 62, alignment: .leading)
-                Slider(value: $model.readerWidth, in: CameraPlacement.readerWidthRange)
-                    .labelsHidden().accessibilityLabel(language.text("reader.widthAccessibility"))
-                Text("\(Int(model.readerWidth.rounded())) pt")
-                    .monospacedDigit().frame(width: 52, alignment: .trailing)
-                Button(language.text("reader.resetWidth"), systemImage: "arrow.counterclockwise") {
-                    model.restoreReaderLayout()
-                }
-                .labelStyle(.iconOnly)
-                .help(language.text("reader.resetWidthHelp"))
-            }
-            HighlightColorControl(selection: $model.highlightColor)
-            Toggle(language.text("reader.listenOnOpen"), isOn: $model.listenOnOpen)
-            if #available(macOS 26, *) {
-                Toggle("Liquid Glass", isOn: $model.useLiquidGlass)
-            }
-            Toggle(language.text("reader.blur"), isOn: $model.blurBackground)
-            Toggle(language.text("reader.showTranscript"), isOn: $model.showTranscript)
-            Toggle(language.text("reader.limitCapture"), isOn: $model.limitCapture)
-                .help(language.text("reader.limitCaptureHelp"))
+            content()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 13))
     }
 }
 
@@ -189,20 +289,25 @@ private struct HighlightColorControl: View {
                     .help(language.text(swatch.nameKey))
                 }
             }
-            HStack(spacing: 6) {
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(selection)
-                    .frame(width: 18, height: 14)
-                    .accessibilityHidden(true)
-                TextField("#\(selectedHex)", text: $hexInput)
-                    .frame(width: 88)
-                    .monospaced()
-                    .accessibilityLabel(language.text("reader.hex"))
-                    .help(language.text("reader.hexHelp"))
-                    .onSubmit(applyCustomColor)
-                Button(language.text("reader.apply"), action: applyCustomColor)
-                    .disabled(customRGB == nil)
+            DisclosureGroup(language.text("reader.hex")) {
+                HStack(spacing: 6) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(selection)
+                        .frame(width: 18, height: 14)
+                        .accessibilityHidden(true)
+                    TextField("#\(selectedHex)", text: $hexInput)
+                        .frame(width: 88)
+                        .monospaced()
+                        .accessibilityLabel(language.text("reader.hex"))
+                        .help(language.text("reader.hexHelp"))
+                        .onSubmit(applyCustomColor)
+                    Button(language.text("reader.apply"), action: applyCustomColor)
+                        .disabled(customRGB == nil)
+                    Spacer(minLength: 0)
+                }
+                .padding(.top, 6)
             }
+            .font(.callout)
         }
     }
 
